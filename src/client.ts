@@ -32,11 +32,13 @@ export class PlanningCenterClient {
       headers.Authorization = `Basic ${credentials}`;
     }
 
-    const response = await request(url, {
+    const requestOptions = {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    };
+
+    const response = await request(url, requestOptions);
 
     const payload = await response.body.text();
     const parsed = payload ? JSON.parse(payload) : null;
