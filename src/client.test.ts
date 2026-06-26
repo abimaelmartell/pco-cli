@@ -42,7 +42,6 @@ describe('PlanningCenterClient', () => {
         'User-Agent': 'pco-cli-test/1.0',
         Authorization: 'Bearer access-token',
       },
-      body: undefined,
     });
   });
 
