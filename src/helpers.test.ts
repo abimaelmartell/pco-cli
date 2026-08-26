@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   matchUniqueSong,
   notifyStatus,
+  parseAlternateKeys,
   parseAssignments,
+  parseBooleanOption,
   parseIntegerOption,
   parseIsoDateTime,
+  parseMusicalKey,
   parsePlanTimeType,
   parsePlanTimeWindow,
+  parseTagIds,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -84,6 +88,50 @@ describe('parseIntegerOption', () => {
     expect(() => parseIntegerOption('2x', '--per-page')).toThrow('--per-page must be an integer');
     expect(() => parseIntegerOption('101', '--per-page', { min: 1, max: 100 })).toThrow('--per-page must be <= 100');
     expect(() => parseIntegerOption('9007199254740993', '--sequence')).toThrow('--sequence must be a safe integer');
+  });
+});
+
+describe('parseBooleanOption', () => {
+  it('accepts true/false and 1/0', () => {
+    expect(parseBooleanOption('true', '--hidden')).toBe(true);
+    expect(parseBooleanOption('FALSE', '--hidden')).toBe(false);
+    expect(parseBooleanOption('1', '--hidden')).toBe(true);
+    expect(parseBooleanOption('0', '--hidden')).toBe(false);
+  });
+
+  it('rejects other values', () => {
+    expect(() => parseBooleanOption('yes', '--hidden')).toThrow('--hidden must be true or false');
+  });
+});
+
+describe('parseMusicalKey', () => {
+  it('accepts documented starting keys including minor', () => {
+    expect(parseMusicalKey('C', '--starting-key')).toBe('C');
+    expect(parseMusicalKey('F#', '--starting-key')).toBe('F#');
+    expect(parseMusicalKey('Cm', '--starting-key')).toBe('Cm');
+  });
+
+  it('rejects unknown keys', () => {
+    expect(() => parseMusicalKey('H', '--starting-key')).toThrow('--starting-key must be a Planning Center key');
+  });
+});
+
+describe('parseTagIds', () => {
+  it('parses a comma-separated list and treats blank as an empty replace set', () => {
+    expect(parseTagIds('5, 9')).toEqual(['5', '9']);
+    expect(parseTagIds('')).toEqual([]);
+  });
+
+  it('rejects empty tokens', () => {
+    expect(() => parseTagIds('5,,9')).toThrow('--tag-ids must be a comma-separated list of tag IDs');
+  });
+});
+
+describe('parseAlternateKeys', () => {
+  it('parses name/key objects', () => {
+    expect(parseAlternateKeys('[{"name":"Capo 3","key":"A"}]')).toEqual([
+      { name: 'Capo 3', key: 'A' },
+    ]);
   });
 });
 

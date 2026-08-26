@@ -94,6 +94,42 @@ pco songs search "Amazing Grace"
 pco songs search "How Great" --per-page 5
 ```
 
+Create or update library songs (Planning Center assignable fields: title, admin, author, copyright, ccli_number, hidden, themes):
+
+```bash
+pco songs get <song-id>
+pco songs create --title "Holy Forever" --author "Chris Tomlin" --ccli-number 7200535
+pco songs update <song-id> --hidden true --themes "Praise"
+```
+
+Tags replace the full set. Look up IDs first:
+
+```bash
+pco tag-groups list --tags-for song --include tags
+pco tag-groups tags <tag-group-id>
+pco songs tags <song-id>
+pco songs assign-tags <song-id> --tag-ids 5,9
+```
+
+### Arrangements and keys
+
+Keys belong to an arrangement, not directly to a song. Creating a song usually adds a default arrangement; list it before adding keys.
+
+```bash
+pco arrangements list <song-id> --include keys
+pco arrangements create <song-id> --name "Default" --meter 4/4 --bpm 72
+pco arrangements update <song-id> <arrangement-id> --chord-chart "[G]Holy forever"
+pco arrangements assign-tags <song-id> <arrangement-id> --tag-ids 12
+
+pco keys list <song-id> <arrangement-id>
+pco keys create <song-id> <arrangement-id> --starting-key G --ending-key G
+pco keys update <song-id> <arrangement-id> <key-id> --starting-key A --name "Acoustic"
+```
+
+`--starting-key` / `--ending-key` use Planning Center values (`C`, `Cm`, `F#`, …). `--alternate-keys` is a JSON array of `{"name":"Capo 3","key":"A"}`.
+
+Keys do not have their own tags in the Services API. Tag songs and arrangements instead.
+
 ### People
 
 Search for people by name:

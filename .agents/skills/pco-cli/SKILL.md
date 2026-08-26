@@ -1,6 +1,6 @@
 ---
 name: pco-cli
-description: Use the pco CLI (@abimaelmartell/pco-cli) to plan worship services in Planning Center Services. Use when creating or listing service plans, searching songs or people, assigning teams, setting reminders, checking scheduling notification status, or when the user mentions Planning Center, PCO, or pco-cli.
+description: Use the pco CLI (@abimaelmartell/pco-cli) to plan worship services in Planning Center Services. Use when creating or listing service plans, searching or creating songs, adding arrangement keys, tagging songs, assigning teams, setting reminders, or when the user mentions Planning Center, PCO, or pco-cli.
 ---
 
 # pco-cli
@@ -14,7 +14,9 @@ This skill is for **calling** the CLI. If you are changing this repository's Typ
 ## When to use
 
 - Create or inspect a Sunday/worship service plan
-- Search the song library or people directory
+- Search, create, or edit songs in the church library
+- Add arrangement keys or assign song/arrangement tags
+- Search the people directory
 - Assign people to teams/positions on a plan
 - Set reminder emails or check who still needs a scheduling email
 - The user says Planning Center, PCO, service type, plan items, or team reminders
@@ -63,13 +65,14 @@ Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access toke
 ## Operating rules
 
 1. Run `pco health` first in a session if auth has not been confirmed.
-2. Look up IDs before mutating. Typical order: `service-types list` → `songs search` / `people search` / `teams list` → create or assign.
-3. Prefer `create-worship-plan` when the user wants a full service (songs + assignments + reminders). It resolves songs **before** creating the plan and fails closed if a title is missing or not unique.
-4. Use composable commands for inspect/update of an existing plan.
-5. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false`. Composite commands may include `"partial"` with whatever was created.
-6. `--starts-at` / `--ends-at` must be ISO 8601 **with a timezone** (example `2026-08-30T10:00:00Z`). `--ends-at` requires `--starts-at` and must be later.
-7. Song add-by-title and `create-worship-plan --songs` require **exactly one** library match for that title.
-8. You cannot send Planning Center's Accept/Decline scheduling email via the API. Do not invent a command for it.
+2. Look up IDs before mutating. Typical order: `service-types list` → `songs search` / `people search` / `teams list` → create or assign. For tags, `tag-groups list --tags-for song --include tags` then `songs assign-tags` (the API **replaces** the full tag set).
+3. Keys belong to an **arrangement**. After `songs create`, run `arrangements list <song-id>` (often a Default arrangement exists) before `keys create`.
+4. Prefer `create-worship-plan` when the user wants a full service (songs + assignments + reminders). It resolves songs **before** creating the plan and fails closed if a title is missing or not unique.
+5. Use composable commands for inspect/update of an existing plan.
+6. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false`. Composite commands may include `"partial"` with whatever was created.
+7. `--starts-at` / `--ends-at` must be ISO 8601 **with a timezone** (example `2026-08-30T10:00:00Z`). `--ends-at` requires `--starts-at` and must be later.
+8. Song add-by-title and `create-worship-plan --songs` require **exactly one** library match for that title.
+9. You cannot send Planning Center's Accept/Decline scheduling email via the API. Do not invent a command for it.
 
 ## Commands
 
@@ -80,6 +83,13 @@ Pagination on list/search commands: `--per-page` (default 25) and `--offset`.
 | Config check | `pco health` |
 | Service types | `pco service-types list` |
 | Songs | `pco songs search "<title>"` |
+| Get/create/update song | `pco songs get` / `create` / `update` |
+| Song tags | `pco songs tags <song-id>` / `pco songs assign-tags <song-id> --tag-ids 5,9` |
+| Arrangements | `pco arrangements list <song-id>` (`--include keys`) |
+| Create/update arrangement | `pco arrangements create` / `update` |
+| Arrangement tags | `pco arrangements assign-tags <song-id> <arrangement-id> --tag-ids 12` |
+| Keys | `pco keys list \| create <song-id> <arrangement-id> --starting-key G` |
+| Tag groups | `pco tag-groups list --tags-for song` / `pco tag-groups tags <tag-group-id>` |
 | People | `pco people search "<name>"` |
 | Teams | `pco teams list <service-type-id>` |
 | Team positions | `pco teams positions <team-id>` |

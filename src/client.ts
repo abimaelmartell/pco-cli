@@ -312,8 +312,175 @@ export class PlanningCenterClient {
   }
 
   async getSong(songId: string): Promise<PcoJsonApiResponse> {
-    return this.requestJson({ 
-      path: `/services/v2/songs/${songId}` 
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}`,
     });
   }
+
+  async createSong(attributes: {
+    title: string;
+    admin?: string;
+    author?: string;
+    copyright?: string;
+    ccli_number?: number;
+    hidden?: boolean;
+    themes?: string;
+  }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'POST',
+      path: '/services/v2/songs',
+      body: { data: { type: 'Song', attributes } },
+    });
+  }
+
+  async updateSong(songId: string, attributes: {
+    title?: string;
+    admin?: string;
+    author?: string;
+    copyright?: string;
+    ccli_number?: number;
+    hidden?: boolean;
+    themes?: string;
+  }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'PATCH',
+      path: `/services/v2/songs/${songId}`,
+      body: { data: { type: 'Song', id: songId, attributes } },
+    });
+  }
+
+  async listSongTags(songId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/tags`,
+      query: query ?? {},
+    });
+  }
+
+  async assignSongTags(songId: string, tagIds: string[]): Promise<null> {
+    return this.requestJson({
+      method: 'POST',
+      path: `/services/v2/songs/${songId}/assign_tags`,
+      body: tagAssignmentBody(tagIds),
+    });
+  }
+
+  async listArrangements(songId: string, query?: { per_page?: number; offset?: number; include?: string }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/arrangements`,
+      query: query ?? {},
+    });
+  }
+
+  async getArrangement(songId: string, arrangementId: string, query?: { include?: string }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}`,
+      query: query ?? {},
+    });
+  }
+
+  async createArrangement(songId: string, attributes: ArrangementAttributes): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'POST',
+      path: `/services/v2/songs/${songId}/arrangements`,
+      body: { data: { type: 'Arrangement', attributes } },
+    });
+  }
+
+  async updateArrangement(songId: string, arrangementId: string, attributes: ArrangementAttributes): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'PATCH',
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}`,
+      body: { data: { type: 'Arrangement', id: arrangementId, attributes } },
+    });
+  }
+
+  async listArrangementTags(songId: string, arrangementId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/tags`,
+      query: query ?? {},
+    });
+  }
+
+  async assignArrangementTags(songId: string, arrangementId: string, tagIds: string[]): Promise<null> {
+    return this.requestJson({
+      method: 'POST',
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/assign_tags`,
+      body: tagAssignmentBody(tagIds),
+    });
+  }
+
+  async listKeys(songId: string, arrangementId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/keys`,
+      query: query ?? {},
+    });
+  }
+
+  async getKey(songId: string, arrangementId: string, keyId: string): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/keys/${keyId}`,
+    });
+  }
+
+  async createKey(songId: string, arrangementId: string, attributes: KeyAttributes): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'POST',
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/keys`,
+      body: { data: { type: 'Key', attributes } },
+    });
+  }
+
+  async updateKey(songId: string, arrangementId: string, keyId: string, attributes: KeyAttributes): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      method: 'PATCH',
+      path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/keys/${keyId}`,
+      body: { data: { type: 'Key', id: keyId, attributes } },
+    });
+  }
+
+  async listTagGroups(query?: { per_page?: number; offset?: number; 'where[tags_for]'?: string; include?: string }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: '/services/v2/tag_groups',
+      query: query ?? {},
+    });
+  }
+
+  async listTagGroupTags(tagGroupId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/tag_groups/${tagGroupId}/tags`,
+      query: query ?? {},
+    });
+  }
+}
+
+export type ArrangementAttributes = {
+  name?: string;
+  bpm?: number;
+  chord_chart?: string;
+  length?: number;
+  lyrics_enabled?: boolean;
+  meter?: string;
+  notes?: string;
+  sequence?: string[];
+};
+
+export type KeyAttributes = {
+  starting_key?: string;
+  ending_key?: string;
+  name?: string;
+  alternate_keys?: Array<{ name: string; key: string }>;
+};
+
+function tagAssignmentBody(tagIds: string[]) {
+  return {
+    data: {
+      type: 'TagAssignment',
+      attributes: {},
+      relationships: {
+        tags: {
+          data: tagIds.map((id) => ({ type: 'Tag', id })),
+        },
+      },
+    },
+  };
 }

@@ -132,6 +132,97 @@ export function planningCenterUrl(resource: PcoJsonApiResource | undefined): str
   return undefined;
 }
 
+export const MUSICAL_KEYS = [
+  'Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#',
+  'Abm', 'Am', 'A#m', 'Bbm', 'Bm', 'Cm', 'C#m', 'Dbm', 'Dm', 'D#m', 'Ebm', 'Em', 'Fm', 'F#m', 'Gbm', 'Gm', 'G#m',
+] as const;
+
+export type MusicalKey = (typeof MUSICAL_KEYS)[number];
+
+const MUSICAL_KEY_SET = new Set<string>(MUSICAL_KEYS);
+
+export const TAG_GROUP_TARGETS = ['person', 'song', 'arrangement', 'media'] as const;
+
+export type TagGroupTarget = (typeof TAG_GROUP_TARGETS)[number];
+
+export function parseBooleanOption(value: string, name: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === '0') return false;
+  throw new Error(`${name} must be true or false`);
+}
+
+export function parseNumberOption(value: string, name: string, bounds?: { min?: number; max?: number }): number {
+  if (!/^-?(?:\d+|\d*\.\d+)$/.test(value)) {
+    throw new Error(`${name} must be a number`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${name} must be a finite number`);
+  }
+  if (bounds?.min !== undefined && parsed < bounds.min) {
+    throw new Error(`${name} must be >= ${bounds.min}`);
+  }
+  if (bounds?.max !== undefined && parsed > bounds.max) {
+    throw new Error(`${name} must be <= ${bounds.max}`);
+  }
+  return parsed;
+}
+
+export function parseMusicalKey(value: string, name: string): MusicalKey {
+  if (!MUSICAL_KEY_SET.has(value)) {
+    throw new Error(`${name} must be a Planning Center key (for example C, Cm, F#)`);
+  }
+  return value as MusicalKey;
+}
+
+export function parseTagIds(raw: string, name = '--tag-ids'): string[] {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return [];
+  const ids = trimmed.split(',').map((part) => part.trim());
+  if (ids.some((id) => id.length === 0)) {
+    throw new Error(`${name} must be a comma-separated list of tag IDs`);
+  }
+  return ids;
+}
+
+export function parseTagGroupTarget(value: string): TagGroupTarget {
+  if ((TAG_GROUP_TARGETS as readonly string[]).includes(value)) {
+    return value as TagGroupTarget;
+  }
+  throw new Error(`--tags-for must be one of: ${TAG_GROUP_TARGETS.join(', ')}`);
+}
+
+export function parseStringList(raw: string, name: string): string[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== 'string')) {
+    throw new Error(`${name} must be a JSON array of strings`);
+  }
+  return parsed;
+}
+
+export type AlternateKeyInput = { name: string; key: MusicalKey };
+
+export function parseAlternateKeys(raw: string): AlternateKeyInput[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error('--alternate-keys must be a JSON array');
+  }
+  return parsed.map((item, index) => {
+    if (item === null || typeof item !== 'object') {
+      throw new Error(`--alternate-keys[${index}] must be an object`);
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.name !== 'string' || typeof record.key !== 'string') {
+      throw new Error(`--alternate-keys[${index}] requires name and key strings`);
+    }
+    return {
+      name: record.name,
+      key: parseMusicalKey(record.key, `--alternate-keys[${index}].key`),
+    };
+  });
+}
+
 export function parseIntegerOption(
   value: string,
   name: string,
