@@ -122,7 +122,7 @@ Assign people to plans:
 # List team members on a plan
 pco plan-team-members list <service-type-id> <plan-id>
 
-# See who still needs the first Accept/Decline scheduling email
+# See who still needs the first Accept/Decline scheduling email (all assigned members)
 pco plan-team-members notify-status <service-type-id> <plan-id>
 
 # Assign a person to a plan

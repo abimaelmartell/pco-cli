@@ -3,6 +3,7 @@ import {
   matchUniqueSong,
   notifyStatus,
   parseAssignments,
+  parseIntegerOption,
   parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,
@@ -17,6 +18,19 @@ describe('parsePlanTimeType', () => {
 
   it('rejects unsupported values', () => {
     expect(() => parsePlanTimeType('soundcheck')).toThrow('--time-type must be one of: service, rehearsal, other');
+  });
+});
+
+describe('parseIntegerOption', () => {
+  it('accepts whole integers', () => {
+    expect(parseIntegerOption('3', '--sequence')).toBe(3);
+    expect(parseIntegerOption('0', '--offset', { min: 0 })).toBe(0);
+  });
+
+  it('rejects truncated or non-numeric values', () => {
+    expect(() => parseIntegerOption('3.7', '--sequence')).toThrow('--sequence must be an integer');
+    expect(() => parseIntegerOption('2x', '--per-page')).toThrow('--per-page must be an integer');
+    expect(() => parseIntegerOption('101', '--per-page', { min: 1, max: 100 })).toThrow('--per-page must be <= 100');
   });
 });
 
@@ -57,6 +71,10 @@ describe('planningCenterUrl', () => {
   it('falls back to the Services web URL when the attribute is missing', () => {
     expect(planningCenterUrl({ id: '123', type: 'Plan' }))
       .toBe('https://services.planningcenteronline.com/plans/123');
+  });
+
+  it('does not invent a plan URL for other resource types', () => {
+    expect(planningCenterUrl({ id: '99', type: 'Song' })).toBeUndefined();
   });
 });
 

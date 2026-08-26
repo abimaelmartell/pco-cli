@@ -9,6 +9,7 @@ export {
   matchUniqueSong,
   notifyStatus,
   parseAssignments,
+  parseIntegerOption,
   parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,

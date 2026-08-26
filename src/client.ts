@@ -273,6 +273,13 @@ export class PlanningCenterClient {
     });
   }
 
+  async listAllPlanTeamMembers(serviceTypeId: string, planId: string): Promise<PcoJsonApiResponse> {
+    return this.collectCollection(
+      `/services/v2/service_types/${serviceTypeId}/plans/${planId}/team_members`,
+      { per_page: 100 },
+    );
+  }
+
   async createPlanTeamMember(serviceTypeId: string, planId: string, attributes: {
     person_id: string;
     team_id: string;

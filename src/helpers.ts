@@ -51,10 +51,38 @@ export function planningCenterUrl(resource: PcoJsonApiResource | undefined): str
   if (typeof fromAttributes === 'string' && fromAttributes.length > 0) {
     return fromAttributes;
   }
-  if (resource?.id) {
+  if (resource?.type === 'Plan' && resource.id) {
     return `https://services.planningcenteronline.com/plans/${resource.id}`;
   }
   return undefined;
+}
+
+export function parseIntegerOption(
+  value: string,
+  name: string,
+  bounds?: { min?: number; max?: number },
+): number {
+  if (!/^-?\d+$/.test(value)) {
+    throw new Error(`${name} must be an integer`);
+  }
+  const parsed = Number(value);
+  if (bounds?.min !== undefined && parsed < bounds.min) {
+    throw new Error(`${name} must be >= ${bounds.min}`);
+  }
+  if (bounds?.max !== undefined && parsed > bounds.max) {
+    throw new Error(`${name} must be <= ${bounds.max}`);
+  }
+  return parsed;
+}
+
+export function paginationFromOptions(options: { perPage?: string; offset?: string }): {
+  per_page: number;
+  offset: number;
+} {
+  return {
+    per_page: parseIntegerOption(options.perPage ?? '25', '--per-page', { min: 1, max: 100 }),
+    offset: parseIntegerOption(options.offset ?? '0', '--offset', { min: 0 }),
+  };
 }
 
 export function parseTeamReminders(raw: string): Record<string, number> {

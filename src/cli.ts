@@ -6,7 +6,9 @@ import {
   asSingleResource,
   matchUniqueSong,
   notifyStatus,
+  paginationFromOptions,
   parseAssignments,
+  parseIntegerOption,
   parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,
@@ -68,10 +70,7 @@ serviceTypes
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (options) => {
     const client = getClient();
-    const result = await client.listServiceTypes({
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listServiceTypes(paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -86,10 +85,7 @@ songs
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (query, options) => {
     const client = getClient();
-    const result = await client.searchSongs(query, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.searchSongs(query, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -104,10 +100,7 @@ people
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (query, options) => {
     const client = getClient();
-    const result = await client.searchPeople(query, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.searchPeople(query, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -122,10 +115,7 @@ teams
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (serviceTypeId, options) => {
     const client = getClient();
-    const result = await client.listTeams(serviceTypeId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listTeams(serviceTypeId, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -137,10 +127,7 @@ teams
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (teamId, options) => {
     const client = getClient();
-    const result = await client.listTeamPositions(teamId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listTeamPositions(teamId, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -158,8 +145,7 @@ plans
   .action(async (serviceTypeId, options) => {
     const client = getClient();
     const result = await client.listPlans(serviceTypeId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
+      ...paginationFromOptions(options),
       filter: options.filter,
       order: options.order,
     });
@@ -264,10 +250,7 @@ planItems
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (serviceTypeId, planId, options) => {
     const client = getClient();
-    const result = await client.listPlanItems(serviceTypeId, planId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listPlanItems(serviceTypeId, planId, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -309,7 +292,7 @@ planItems
     };
 
     if (options.sequence) {
-      itemAttributes.sequence = parseInt(options.sequence);
+      itemAttributes.sequence = parseIntegerOption(options.sequence, '--sequence', { min: 0 });
     }
 
     const result = await client.createPlanItem(serviceTypeId, planId, itemAttributes);
@@ -328,10 +311,7 @@ planTeamMembers
   .option('--offset <number>', 'Number of results to skip', '0')
   .action(async (serviceTypeId, planId, options) => {
     const client = getClient();
-    const result = await client.listPlanTeamMembers(serviceTypeId, planId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listPlanTeamMembers(serviceTypeId, planId, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -340,14 +320,9 @@ planTeamMembers
   .description('Show which assigned people still need the first scheduling email')
   .argument('<service-type-id>', 'Service type ID')
   .argument('<plan-id>', 'Plan ID')
-  .option('--per-page <number>', 'Number of results per page', '25')
-  .option('--offset <number>', 'Number of results to skip', '0')
-  .action(async (serviceTypeId, planId, options) => {
+  .action(async (serviceTypeId, planId) => {
     const client = getClient();
-    const result = await client.listPlanTeamMembers(serviceTypeId, planId, {
-      per_page: parseInt(options.perPage),
-      offset: parseInt(options.offset),
-    });
+    const result = await client.listAllPlanTeamMembers(serviceTypeId, planId);
     console.log(JSON.stringify({
       ok: true,
       note: 'The Services API cannot send Accept/Decline scheduling emails. Use team_reminders or the Planning Center UI.',
