@@ -83,20 +83,27 @@ export class PlanningCenterClient {
   async collectCollection(
     path: string,
     query?: Record<string, string | number | boolean | undefined>,
+    options?: { maxPages?: number },
   ): Promise<PcoJsonApiResponse> {
     const data: PcoJsonApiResource[] = [];
     let page = await this.requestJson<PcoJsonApiResponse>({ path, query: query ?? {} });
     const apiOrigin = new URL(this.config.PCO_BASE_URL).origin;
+    const maxPages = options?.maxPages ?? 100;
+    let pagesRead = 0;
 
-    for (let pageCount = 0; pageCount < 100; pageCount += 1) {
+    while (true) {
       if (Array.isArray(page.data)) {
         data.push(...page.data);
       } else if (page.data) {
         data.push(page.data);
       }
+      pagesRead += 1;
 
       const next = page.links?.next;
       if (!next) break;
+      if (pagesRead >= maxPages) {
+        throw new Error(`Exceeded ${maxPages} pages while collecting results; refine the query`);
+      }
 
       const nextUrl = new URL(next, this.config.PCO_BASE_URL);
       if (nextUrl.origin !== apiOrigin) {

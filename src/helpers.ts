@@ -117,6 +117,12 @@ export function notifyStatus(response: PcoJsonApiResponse): Array<Record<string,
     prepare_notification: member.attributes?.prepare_notification ?? null,
     notification_prepared_at: member.attributes?.notification_prepared_at ?? null,
     notification_sent_at: member.attributes?.notification_sent_at ?? null,
-    needs_scheduling_email: member.attributes?.notification_sent_at == null,
+    needs_scheduling_email: needsSchedulingEmail(member.attributes),
   }));
+}
+
+function needsSchedulingEmail(attributes: Record<string, unknown> | undefined): boolean {
+  const status = attributes?.status;
+  const unconfirmed = status === 'U' || String(status).toLowerCase() === 'unconfirmed';
+  return unconfirmed && attributes?.notification_sent_at == null;
 }

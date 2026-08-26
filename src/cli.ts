@@ -233,11 +233,23 @@ plans
       }
     }
 
-    const finalResult = await client.getPlan(serviceTypeId, planData.id);
-    console.log(JSON.stringify({
-      ...finalResult,
-      planning_center_url: planningCenterUrl(asSingleResource(finalResult.data)),
-    }, null, 2));
+    try {
+      const finalResult = await client.getPlan(serviceTypeId, planData.id);
+      console.log(JSON.stringify({
+        ...finalResult,
+        planning_center_url: planningCenterUrl(asSingleResource(finalResult.data)),
+      }, null, 2));
+    } catch (error: unknown) {
+      if (error instanceof PartialWorkflowError) throw error;
+      throw new PartialWorkflowError(
+        error instanceof Error ? error.message : 'Failed to reload the created plan',
+        {
+          plan: planData,
+          planning_center_url: planningCenterUrl(planData),
+          cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
+        },
+      );
+    }
   });
 
 // Plan items commands
@@ -460,6 +472,7 @@ program
     }
 
     const songItems = [];
+    const assignmentResults = [];
     try {
       for (const { song } of resolvedSongs) {
         const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
@@ -468,7 +481,6 @@ program
         songItems.push(itemResult.data);
       }
 
-      const assignmentResults = [];
       for (const assignment of assignments) {
         const memberAttributes: {
           person_id: string;
@@ -509,6 +521,7 @@ program
           plan: planData,
           plan_time: planTimeData,
           songs: songItems,
+          assignments: assignmentResults,
           planning_center_url: planningCenterUrl(planData),
           cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
         },

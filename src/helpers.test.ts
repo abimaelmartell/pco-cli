@@ -113,6 +113,24 @@ describe('notifyStatus', () => {
             notification_sent_at: '2026-08-02T00:00:00Z',
           },
         },
+        {
+          id: '3',
+          type: 'PlanPerson',
+          attributes: {
+            name: 'Clara',
+            status: 'C',
+            notification_sent_at: null,
+          },
+        },
+        {
+          id: '4',
+          type: 'PlanPerson',
+          attributes: {
+            name: 'Declan',
+            status: 'D',
+            notification_sent_at: null,
+          },
+        },
       ],
     })).toEqual([
       {
@@ -133,6 +151,26 @@ describe('notifyStatus', () => {
         prepare_notification: null,
         notification_prepared_at: null,
         notification_sent_at: '2026-08-02T00:00:00Z',
+        needs_scheduling_email: false,
+      },
+      {
+        id: '3',
+        name: 'Clara',
+        status: 'C',
+        team_position_name: null,
+        prepare_notification: null,
+        notification_prepared_at: null,
+        notification_sent_at: null,
+        needs_scheduling_email: false,
+      },
+      {
+        id: '4',
+        name: 'Declan',
+        status: 'D',
+        team_position_name: null,
+        prepare_notification: null,
+        notification_prepared_at: null,
+        notification_sent_at: null,
         needs_scheduling_email: false,
       },
     ]);

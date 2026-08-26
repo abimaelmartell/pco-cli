@@ -169,6 +169,23 @@ describe('PlanningCenterClient', () => {
       expect(requestMock).toHaveBeenCalledTimes(2);
     });
 
+    it('errors instead of silently truncating when pagination exceeds the safety limit', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: {
+          text: async () => JSON.stringify({
+            data: [{ id: '1', type: 'Song' }],
+            links: { next: 'https://api.example.test/services/v2/songs?offset=100' },
+          }),
+        },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await expect(client.collectCollection('/services/v2/songs', {}, { maxPages: 1 }))
+        .rejects.toThrow('Exceeded 1 pages while collecting results');
+      expect(requestMock).toHaveBeenCalledTimes(1);
+    });
+
     it('searches people by search_name', async () => {
       requestMock.mockResolvedValueOnce({
         statusCode: 200,
