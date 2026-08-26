@@ -9,9 +9,11 @@ Planning Center exposes APIs for products including Calendar, Check-Ins, Giving,
 From npm (after the package is published):
 
 ```bash
-npm install -g pco-cli
+npm install -g @abimaelmartell/pco-cli
 pco health
 ```
+
+The registry package is scoped because npm rejects unscoped `pco-cli` as too similar to existing [`cp-cli`](https://www.npmjs.com/package/cp-cli). The installed binaries are still `pco` and `pco-cli`.
 
 From this repository:
 
@@ -215,7 +217,7 @@ Merge this workflow to `main` before attaching the trusted publisher. npm matche
 
 ### One-time setup on npmjs.com
 
-1. Sign in as the npm user who will own `pco-cli`.
+1. Sign in as the npm user `abimaelmartell` (the scope must match your npm username).
 2. If the package does not exist yet, either:
    - Attach the trusted publisher below first (when npm offers that for an unpublished name), then push tag `v0.1.0`, or
    - Publish once from your machine so the package settings page exists:
@@ -227,9 +229,9 @@ Merge this workflow to `main` before attaching the trusted publisher. npm matche
    npm publish --access public
    ```
 
-   After a local first publish of `0.1.0`, bump the version before using the tag workflow. `pco-cli` was previously published and unpublished (`1.0.1-0`); that version can never be reused. If npm rejects the name because another account still owns it, publish under a scope such as `@abimaelmartell/pco-cli` instead.
+   After a local first publish of `0.1.0`, bump the version before using the tag workflow.
 
-3. On [npmjs.com](https://www.npmjs.com/) open **pco-cli → Settings → Trusted Publisher**.
+3. On [npmjs.com](https://www.npmjs.com/) open **@abimaelmartell/pco-cli → Settings → Trusted Publisher**.
 4. Choose **GitHub Actions** and set:
    - Organization or user: `abimaelmartell`
    - Repository: `pco-cli`
@@ -241,7 +243,7 @@ Merge this workflow to `main` before attaching the trusted publisher. npm matche
 You can do the same attach step from a local npm 11.5.1+ CLI:
 
 ```bash
-npm trust github pco-cli --repo abimaelmartell/pco-cli --file publish.yml --allow-publish
+npm trust github @abimaelmartell/pco-cli --repo abimaelmartell/pco-cli --file publish.yml --allow-publish
 ```
 
 ### Later releases
