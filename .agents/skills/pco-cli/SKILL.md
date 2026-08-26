@@ -1,6 +1,6 @@
 ---
 name: pco-cli
-description: Use the pco CLI (@abimaelmartell/pco-cli) to plan worship services in Planning Center Services. Use when creating or listing service plans, searching or creating songs, adding arrangement keys, tagging songs, assigning teams, setting reminders, or when the user mentions Planning Center, PCO, or pco-cli.
+description: Use the pco CLI (@abimaelmartell/pco-cli) to plan worship services in Planning Center Services. Use when creating or listing service plans, searching or creating songs, adding arrangement keys, tagging songs, assigning teams, setting reminders, building a setlist with keys and musicians, or when the user mentions Planning Center, PCO, or pco-cli.
 ---
 
 # pco-cli
@@ -31,6 +31,8 @@ pco health
 ```
 
 If `pco` is not on `PATH`, run the same commands with `npx --yes @abimaelmartell/pco-cli` in place of `pco`.
+
+`songs create`, `keys create`, and `plan-items add-song --key-id` need a CLI that includes those commands. If `pco keys --help` is unknown, use this repository (`npm run build && npm link`) instead of an older npm release.
 
 ### Credentials
 
@@ -66,13 +68,14 @@ Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access toke
 
 1. Run `pco health` first in a session if auth has not been confirmed.
 2. Look up IDs before mutating. Typical order: `service-types list` → `songs search` / `people search` / `teams list` → create or assign. For tags, `tag-groups list --tags-for song --include tags` then `songs assign-tags` (the API **replaces** the full tag set).
-3. Keys belong to an **arrangement**. After `songs create`, run `arrangements list <song-id>` (often a Default arrangement exists) before `keys create`.
-4. Prefer `create-worship-plan` when the user wants a full service (songs + assignments + reminders). It resolves songs **before** creating the plan and fails closed if a title is missing or not unique.
-5. Use composable commands for inspect/update of an existing plan.
+3. Keys belong to an **arrangement**, not the song. After `songs create`, run `arrangements list <song-id>` (often a Default arrangement exists) before `keys list` / `keys create`.
+4. If the user gives **songs with keys** (and usually musicians), do **not** use `create-worship-plan` to add items. That composite only POSTs `song_id` (PCO default arrangement/key). Follow **Worship plan with keys and musicians** below.
+5. Use `create-worship-plan` only when songs are titles with **no** required keys and you want fail-closed title resolution before the plan exists.
 6. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false`. Composite commands may include `"partial"` with whatever was created.
 7. `--starts-at` / `--ends-at` must be ISO 8601 **with a timezone** (example `2026-08-30T10:00:00Z`). `--ends-at` requires `--starts-at` and must be later.
-8. Song add-by-title and `create-worship-plan --songs` require **exactly one** library match for that title.
-9. You cannot send Planning Center's Accept/Decline scheduling email via the API. Do not invent a command for it.
+8. Song titles and people names must resolve to **exactly one** match. If search returns 0 or 2+, stop and ask; do not pick the first row.
+9. `--starting-key` must be a Planning Center value (`C`, `G`, `F#`, `Eb`, `Cm`, `Am`, …). Do not send `G major` or `key of G`.
+10. You cannot send Planning Center's Accept/Decline scheduling email via the API. After `plan-team-members assign`, use `plan-reminders set` and `plan-team-members notify-status`. Return `planning_center_url` from `plans get`.
 
 ## Commands
 
@@ -98,12 +101,12 @@ Pagination on list/search commands: `--per-page` (default 25) and `--offset`.
 | Create plan | `pco plans create <service-type-id> --title "..." [--series-title "..."] [--public] [--starts-at "..."] [--ends-at "..."] [--time-type service]` |
 | Plan times | `pco plan-times list <service-type-id> <plan-id>` |
 | Plan items | `pco plan-items list <service-type-id> <plan-id>` |
-| Add song | `pco plan-items add-song <service-type-id> <plan-id> (--song-id <id> \| --title "<exact title>")` |
+| Add song | `pco plan-items add-song <service-type-id> <plan-id> --song-id <id> [--arrangement-id <id>] [--key-id <id>]` (or `--title "<exact title>"` instead of `--song-id`; `--title` cannot select a key) |
 | Team members | `pco plan-team-members list <service-type-id> <plan-id>` |
 | Who needs first email | `pco plan-team-members notify-status <service-type-id> <plan-id>` |
 | Assign person | `pco plan-team-members assign <service-type-id> <plan-id> <person-id> <team-id> [--position "Worship Leader"] [--prepare-notification]` |
 | Reminders | `pco plan-reminders set <service-type-id> <plan-time-id> --team-reminders '{"<team-id>": 7}'` |
-| Full service | `pco create-worship-plan <service-type-id> --title "..." --starts-at "..." [options]` |
+| Full service (titles only) | `pco create-worship-plan <service-type-id> --title "..." --starts-at "..." [options]` — do **not** use this when the user named keys |
 
 `--time-type` is `service`, `rehearsal`, or `other` (default `service`). `--team-reminders` values are integers **0–7** (days before the service time).
 
@@ -125,6 +128,62 @@ pco create-worship-plan <service-type-id> \
 
 Success JSON includes `plan`, `plan_time`, `songs`, `assignments`, and `planning_center_url` (Services **web UI** URL, not the API `links.self`). Open that URL when the user needs to send Accept/Decline emails by hand.
 
+`--songs` is resolved **before** `plans create`. A missing or ambiguous title fails with no plan created. Added items POST only `song_id` (PCO default arrangement/key). If the user named keys, skip this command and follow the playbook below.
+
+## Typical flows
+
+### Worship plan with keys and musicians (default)
+
+Use this when the user gives songs **with keys** and people to schedule. Keep using composable commands.
+
+1. `pco health` — stop if `"auth": "none"`.
+2. Resolve the service type: `pco service-types list`. Match `attributes.name` in JSON. Need **one** `id`.
+3. Resolve teams: `pco teams list <service-type-id>`. For a named position, `pco teams positions <team-id>`.
+4. Resolve each person: `pco people search "..."`. Require exactly one match; store `id`.
+5. For **each** song + requested key, in setlist order:
+   - `pco songs search "..."` — 0 hits → `pco songs create --title "..."`; 2+ hits → stop.
+   - `pco arrangements list <song-id>` — use Default unless the user named another arrangement; 0 rows → `pco arrangements create <song-id> --name Default`.
+   - `pco keys list <song-id> <arrangement-id>` — match `attributes.starting_key` to the requested PCO key.
+   - If that key is missing: `pco keys create <song-id> <arrangement-id> --starting-key G` (use the user's key). Capture the new `id`.
+6. Create the plan **after** songs/keys resolve:
+
+```bash
+pco plans create <service-type-id> --title "Sunday Morning" --starts-at 2026-08-30T10:00:00Z
+```
+
+Capture `data.id` (plan) and `plan_time.id` (needed for reminders).
+
+7. Add items **in order**, each with the resolved key:
+
+```bash
+pco plan-items add-song <service-type-id> <plan-id> \
+  --song-id <song-id> \
+  --arrangement-id <arrangement-id> \
+  --key-id <key-id>
+```
+
+8. Assign people:
+
+```bash
+pco plan-team-members assign <service-type-id> <plan-id> <person-id> <team-id> \
+  --position "Acoustic Guitar"
+```
+
+9. Optional reminders (days before the service time, 0–7):
+
+```bash
+pco plan-reminders set <service-type-id> <plan-time-id> \
+  --team-reminders '{"<team-id>": 7}'
+```
+
+10. Return JSON ids plus `pco plans get <service-type-id> <plan-id>` → `planning_center_url`.
+
+If a later step fails, report `"partial"`: plan id, items already added, assignments already made. Do not silently retry `plans create`.
+
+### Inspect or update an existing plan
+
+`plans get`, `plan-items list`, `plan-team-members list`, `plan-team-members notify-status`.
+
 ## Limitations
 
 Planning Center cannot send the in-app **Accept/Decline scheduling email** through the API ([planningcenter/developers#1475](https://github.com/planningcenter/developers/issues/1475)).
@@ -139,5 +198,5 @@ Workarounds:
 
 - Missing/invalid auth: fix env or `~/.config/pco/env`, then `pco health`
 - Conflicting client id vs app id: keep one, or set them to the same value
-- Song title not unique or not found: search, then pass `--song-id` (or pick a unique title)
+- Song title or person name not unique or not found: stop and ask; do not pick the first row. For songs, pass `--song-id` after the user chooses.
 - Partial create: read `partial` in the error JSON; do not assume the plan is absent; resume with composable commands using IDs already returned
