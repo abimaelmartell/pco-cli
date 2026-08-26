@@ -2,11 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   matchUniqueSong,
   notifyStatus,
+  parseAlternateKeys,
   parseAssignments,
+  parseBooleanOption,
   parseIntegerOption,
   parseIsoDateTime,
+  parseMusicalKey,
+  parseNumberOption,
   parsePlanTimeType,
   parsePlanTimeWindow,
+  parseStringList,
+  parseTagGroupTarget,
+  parseTagIds,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -84,6 +91,92 @@ describe('parseIntegerOption', () => {
     expect(() => parseIntegerOption('2x', '--per-page')).toThrow('--per-page must be an integer');
     expect(() => parseIntegerOption('101', '--per-page', { min: 1, max: 100 })).toThrow('--per-page must be <= 100');
     expect(() => parseIntegerOption('9007199254740993', '--sequence')).toThrow('--sequence must be a safe integer');
+  });
+});
+
+describe('parseBooleanOption', () => {
+  it('accepts true/false and 1/0', () => {
+    expect(parseBooleanOption('true', '--hidden')).toBe(true);
+    expect(parseBooleanOption('FALSE', '--hidden')).toBe(false);
+    expect(parseBooleanOption('1', '--hidden')).toBe(true);
+    expect(parseBooleanOption('0', '--hidden')).toBe(false);
+  });
+
+  it('rejects other values', () => {
+    expect(() => parseBooleanOption('yes', '--hidden')).toThrow('--hidden must be true or false');
+  });
+});
+
+describe('parseMusicalKey', () => {
+  it('accepts documented starting keys including minor', () => {
+    expect(parseMusicalKey('C', '--starting-key')).toBe('C');
+    expect(parseMusicalKey('F#', '--starting-key')).toBe('F#');
+    expect(parseMusicalKey('Cm', '--starting-key')).toBe('Cm');
+  });
+
+  it('rejects unknown keys', () => {
+    expect(() => parseMusicalKey('H', '--starting-key')).toThrow('--starting-key must be a Planning Center key');
+  });
+});
+
+describe('parseTagIds', () => {
+  it('parses a comma-separated list and treats blank as an empty replace set', () => {
+    expect(parseTagIds('5, 9')).toEqual(['5', '9']);
+    expect(parseTagIds('')).toEqual([]);
+  });
+
+  it('rejects empty tokens', () => {
+    expect(() => parseTagIds('5,,9')).toThrow('--tag-ids must be a comma-separated list of tag IDs');
+  });
+});
+
+describe('parseAlternateKeys', () => {
+  it('parses name/key objects', () => {
+    expect(parseAlternateKeys('[{"name":"Capo 3","key":"A"}]')).toEqual([
+      { name: 'Capo 3', key: 'A' },
+    ]);
+  });
+
+  it('rejects malformed JSON with an option-focused error', () => {
+    expect(() => parseAlternateKeys('[{name:Capo}]')).toThrow('--alternate-keys must be valid JSON');
+  });
+});
+
+describe('parseNumberOption', () => {
+  it('accepts integers and decimals', () => {
+    expect(parseNumberOption('72', '--bpm')).toBe(72);
+    expect(parseNumberOption('72.5', '--bpm')).toBe(72.5);
+  });
+
+  it('rejects non-numeric values and out-of-range numbers', () => {
+    expect(() => parseNumberOption('fast', '--bpm')).toThrow('--bpm must be a number');
+    expect(() => parseNumberOption('0', '--bpm', { min: 1 })).toThrow('--bpm must be >= 1');
+  });
+});
+
+describe('parseStringList', () => {
+  it('parses a JSON array of strings', () => {
+    expect(parseStringList('["Verse 1","Chorus 1"]', '--sequence')).toEqual(['Verse 1', 'Chorus 1']);
+  });
+
+  it('rejects non-string arrays', () => {
+    expect(() => parseStringList('[1,2]', '--sequence')).toThrow('--sequence must be a JSON array of strings');
+    expect(() => parseStringList('{"a":1}', '--sequence')).toThrow('--sequence must be a JSON array of strings');
+  });
+
+  it('rejects malformed JSON with an option-focused error', () => {
+    expect(() => parseStringList('[Verse 1', '--sequence')).toThrow('--sequence must be valid JSON');
+  });
+});
+
+describe('parseTagGroupTarget', () => {
+  it('accepts documented tags_for values', () => {
+    expect(parseTagGroupTarget('song')).toBe('song');
+    expect(parseTagGroupTarget('arrangement')).toBe('arrangement');
+  });
+
+  it('rejects unknown targets', () => {
+    expect(() => parseTagGroupTarget('key')).toThrow('--tags-for must be one of: person, song, arrangement, media');
   });
 });
 

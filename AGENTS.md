@@ -16,7 +16,11 @@ Agents **calling** the published CLI (worship planning, song search, assignments
 Keep endpoint commands small and composable. Current Services worship-planning surface:
 
 - `service-types list`
-- `songs search` / `people search`
+- `songs search` / `get` / `create` / `update` / `tags` / `assign-tags`
+- `arrangements list` / `get` / `create` / `update` / `tags` / `assign-tags`
+- `keys list` / `get` / `create` / `update`
+- `tag-groups list` / `tags`
+- `people search`
 - `teams list` / `teams positions`
 - `plans list` / `get` / `create`
 - `plan-times list`

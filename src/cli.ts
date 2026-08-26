@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
+import type { ArrangementAttributes, KeyAttributes } from './client.js';
 import { authMode, loadConfigFromAuthOptions } from './config.js';
 import {
   asSingleResource,
   matchUniqueSong,
   notifyStatus,
   paginationFromOptions,
+  parseAlternateKeys,
   parseAssignments,
+  parseBooleanOption,
   parseIntegerOption,
+  parseMusicalKey,
+  parseNumberOption,
   parsePlanTimeType,
   parsePlanTimeWindow,
+  parseStringList,
+  parseTagGroupTarget,
+  parseTagIds,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -78,6 +86,430 @@ songs
     const result = await client.searchSongs(query, paginationFromOptions(options));
     console.log(JSON.stringify(result, null, 2));
   });
+
+songs
+  .command('get')
+  .description('Get a song by ID')
+  .argument('<song-id>', 'Song ID')
+  .action(async (songId) => {
+    const client = getClient();
+    const result = await client.getSong(songId);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+songs
+  .command('create')
+  .description('Create a song in the church library')
+  .requiredOption('--title <title>', 'Song title')
+  .option('--admin <name>', 'Admin or owner name')
+  .option('--author <name>', 'Song author')
+  .option('--copyright <text>', 'Copyright')
+  .option('--ccli-number <number>', 'CCLI number')
+  .option('--hidden <true|false>', 'Hide the song from the library', (value) => parseBooleanOption(value, '--hidden'))
+  .option('--themes <text>', 'Themes')
+  .action(async (options) => {
+    const client = getClient();
+    const result = await client.createSong(songAttributesFromOptions(options, { title: options.title }));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+songs
+  .command('update')
+  .description('Update a song in the church library')
+  .argument('<song-id>', 'Song ID')
+  .option('--title <title>', 'Song title')
+  .option('--admin <name>', 'Admin or owner name')
+  .option('--author <name>', 'Song author')
+  .option('--copyright <text>', 'Copyright')
+  .option('--ccli-number <number>', 'CCLI number')
+  .option('--hidden <true|false>', 'Hide the song from the library', (value) => parseBooleanOption(value, '--hidden'))
+  .option('--themes <text>', 'Themes')
+  .action(async (songId, options) => {
+    const attributes = songAttributesFromOptions(options);
+    if (Object.keys(attributes).length === 0) {
+      throw new Error('Provide at least one of --title, --admin, --author, --copyright, --ccli-number, --hidden, or --themes');
+    }
+    const client = getClient();
+    const result = await client.updateSong(songId, attributes);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+songs
+  .command('tags')
+  .description('List tags assigned to a song')
+  .argument('<song-id>', 'Song ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (songId, options) => {
+    const client = getClient();
+    const result = await client.listSongTags(songId, paginationFromOptions(options));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+songs
+  .command('assign-tags')
+  .description('Replace all tags on a song (send the full tag id set)')
+  .argument('<song-id>', 'Song ID')
+  .requiredOption('--tag-ids <ids>', 'Comma-separated tag IDs (empty string clears tags)')
+  .action(async (songId, options) => {
+    const client = getClient();
+    await client.assignSongTags(songId, parseTagIds(options.tagIds));
+    console.log(JSON.stringify({ ok: true }, null, 2));
+  });
+
+const arrangements = program.command('arrangements').description('Manage song arrangements');
+
+arrangements
+  .command('list')
+  .description('List arrangements for a song')
+  .argument('<song-id>', 'Song ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .option('--include <resources>', 'Related resources to include (for example keys)')
+  .action(async (songId, options) => {
+    const client = getClient();
+    const result = await client.listArrangements(songId, {
+      ...paginationFromOptions(options),
+      ...(options.include ? { include: options.include } : {}),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+arrangements
+  .command('get')
+  .description('Get an arrangement')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .option('--include <resources>', 'Related resources to include (for example keys)')
+  .action(async (songId, arrangementId, options) => {
+    const client = getClient();
+    const result = await client.getArrangement(songId, arrangementId, {
+      ...(options.include ? { include: options.include } : {}),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+arrangements
+  .command('create')
+  .description('Create an arrangement for a song')
+  .argument('<song-id>', 'Song ID')
+  .requiredOption('--name <name>', 'Arrangement name')
+  .option('--bpm <number>', 'Beats per minute')
+  .option('--chord-chart <text>', 'Lyrics and chords (standard or ChordPro)')
+  .option('--length <seconds>', 'Length in seconds')
+  .option('--lyrics-enabled <true|false>', 'Enable lyrics', (value) => parseBooleanOption(value, '--lyrics-enabled'))
+  .option('--meter <meter>', 'Time signature (for example 4/4)')
+  .option('--notes <text>', 'Arrangement notes')
+  .option('--sequence <json>', 'JSON array of section labels')
+  .action(async (songId, options) => {
+    const client = getClient();
+    const result = await client.createArrangement(songId, arrangementAttributesFromOptions(options, { name: options.name }));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+arrangements
+  .command('update')
+  .description('Update an arrangement')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .option('--name <name>', 'Arrangement name')
+  .option('--bpm <number>', 'Beats per minute')
+  .option('--chord-chart <text>', 'Lyrics and chords (standard or ChordPro)')
+  .option('--length <seconds>', 'Length in seconds')
+  .option('--lyrics-enabled <true|false>', 'Enable lyrics', (value) => parseBooleanOption(value, '--lyrics-enabled'))
+  .option('--meter <meter>', 'Time signature (for example 4/4)')
+  .option('--notes <text>', 'Arrangement notes')
+  .option('--sequence <json>', 'JSON array of section labels')
+  .action(async (songId, arrangementId, options) => {
+    const attributes = arrangementAttributesFromOptions(options);
+    if (Object.keys(attributes).length === 0) {
+      throw new Error('Provide at least one arrangement field to update');
+    }
+    const client = getClient();
+    const result = await client.updateArrangement(songId, arrangementId, attributes);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+arrangements
+  .command('tags')
+  .description('List tags assigned to an arrangement')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (songId, arrangementId, options) => {
+    const client = getClient();
+    const result = await client.listArrangementTags(songId, arrangementId, paginationFromOptions(options));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+arrangements
+  .command('assign-tags')
+  .description('Replace all tags on an arrangement (send the full tag id set)')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .requiredOption('--tag-ids <ids>', 'Comma-separated tag IDs (empty string clears tags)')
+  .action(async (songId, arrangementId, options) => {
+    const client = getClient();
+    await client.assignArrangementTags(songId, arrangementId, parseTagIds(options.tagIds));
+    console.log(JSON.stringify({ ok: true }, null, 2));
+  });
+
+const keys = program.command('keys').description('Manage arrangement keys');
+
+keys
+  .command('list')
+  .description('List keys for an arrangement')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (songId, arrangementId, options) => {
+    const client = getClient();
+    const result = await client.listKeys(songId, arrangementId, paginationFromOptions(options));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+keys
+  .command('get')
+  .description('Get a key')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .argument('<key-id>', 'Key ID')
+  .action(async (songId, arrangementId, keyId) => {
+    const client = getClient();
+    const result = await client.getKey(songId, arrangementId, keyId);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+keys
+  .command('create')
+  .description('Add a key to an arrangement')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .requiredOption('--starting-key <key>', 'Starting key (for example C or Cm)', (value) => parseMusicalKey(value, '--starting-key'))
+  .option('--ending-key <key>', 'Ending key', (value) => parseMusicalKey(value, '--ending-key'))
+  .option('--name <name>', 'Key name')
+  .option('--alternate-keys <json>', 'JSON array of { "name", "key" } objects')
+  .action(async (songId, arrangementId, options) => {
+    const client = getClient();
+    const result = await client.createKey(songId, arrangementId, keyAttributesFromOptions(options, {
+      starting_key: options.startingKey,
+    }));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+keys
+  .command('update')
+  .description('Update a key')
+  .argument('<song-id>', 'Song ID')
+  .argument('<arrangement-id>', 'Arrangement ID')
+  .argument('<key-id>', 'Key ID')
+  .option('--starting-key <key>', 'Starting key (for example C or Cm)', (value) => parseMusicalKey(value, '--starting-key'))
+  .option('--ending-key <key>', 'Ending key', (value) => parseMusicalKey(value, '--ending-key'))
+  .option('--name <name>', 'Key name')
+  .option('--alternate-keys <json>', 'JSON array of { "name", "key" } objects')
+  .action(async (songId, arrangementId, keyId, options) => {
+    const attributes = keyAttributesFromOptions(options);
+    if (Object.keys(attributes).length === 0) {
+      throw new Error('Provide at least one of --starting-key, --ending-key, --name, or --alternate-keys');
+    }
+    const client = getClient();
+    const result = await client.updateKey(songId, arrangementId, keyId, attributes);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+const tagGroups = program.command('tag-groups').description('List Planning Center tag groups and tags');
+
+tagGroups
+  .command('list')
+  .description('List tag groups')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .option('--tags-for <target>', 'Filter by target (person, song, arrangement, media)', parseTagGroupTarget)
+  .option('--include <resources>', 'Related resources to include (for example tags)')
+  .action(async (options) => {
+    const client = getClient();
+    const result = await client.listTagGroups({
+      ...paginationFromOptions(options),
+      ...(options.tagsFor ? { 'where[tags_for]': options.tagsFor } : {}),
+      ...(options.include ? { include: options.include } : {}),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+tagGroups
+  .command('tags')
+  .description('List tags in a tag group')
+  .argument('<tag-group-id>', 'Tag group ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (tagGroupId, options) => {
+    const client = getClient();
+    const result = await client.listTagGroupTags(tagGroupId, paginationFromOptions(options));
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+function songAttributesFromOptions(
+  options: {
+    title?: string;
+    admin?: string;
+    author?: string;
+    copyright?: string;
+    ccliNumber?: string;
+    hidden?: boolean;
+    themes?: string;
+  },
+  required: { title: string },
+): {
+  title: string;
+  admin?: string;
+  author?: string;
+  copyright?: string;
+  ccli_number?: number;
+  hidden?: boolean;
+  themes?: string;
+};
+function songAttributesFromOptions(options: {
+  title?: string;
+  admin?: string;
+  author?: string;
+  copyright?: string;
+  ccliNumber?: string;
+  hidden?: boolean;
+  themes?: string;
+}): {
+  title?: string;
+  admin?: string;
+  author?: string;
+  copyright?: string;
+  ccli_number?: number;
+  hidden?: boolean;
+  themes?: string;
+};
+function songAttributesFromOptions(options: {
+  title?: string;
+  admin?: string;
+  author?: string;
+  copyright?: string;
+  ccliNumber?: string;
+  hidden?: boolean;
+  themes?: string;
+}, required?: { title: string }) {
+  const attributes: {
+    title?: string;
+    admin?: string;
+    author?: string;
+    copyright?: string;
+    ccli_number?: number;
+    hidden?: boolean;
+    themes?: string;
+  } = {
+    ...(required ? { title: required.title } : {}),
+  };
+  if (!required && options.title) attributes.title = options.title;
+  if (options.admin) attributes.admin = options.admin;
+  if (options.author) attributes.author = options.author;
+  if (options.copyright) attributes.copyright = options.copyright;
+  if (options.ccliNumber) {
+    attributes.ccli_number = parseIntegerOption(options.ccliNumber, '--ccli-number', { min: 1 });
+  }
+  if (options.hidden !== undefined) attributes.hidden = options.hidden;
+  if (options.themes) attributes.themes = options.themes;
+  return attributes;
+}
+
+function arrangementAttributesFromOptions(
+  options: {
+    name?: string;
+    bpm?: string;
+    chordChart?: string;
+    length?: string;
+    lyricsEnabled?: boolean;
+    meter?: string;
+    notes?: string;
+    sequence?: string;
+  },
+  required: { name: string },
+): ArrangementAttributes & { name: string };
+function arrangementAttributesFromOptions(options: {
+  name?: string;
+  bpm?: string;
+  chordChart?: string;
+  length?: string;
+  lyricsEnabled?: boolean;
+  meter?: string;
+  notes?: string;
+  sequence?: string;
+}): ArrangementAttributes;
+function arrangementAttributesFromOptions(options: {
+  name?: string;
+  bpm?: string;
+  chordChart?: string;
+  length?: string;
+  lyricsEnabled?: boolean;
+  meter?: string;
+  notes?: string;
+  sequence?: string;
+}, required?: { name: string }) {
+  const attributes: {
+    name?: string;
+    bpm?: number;
+    chord_chart?: string;
+    length?: number;
+    lyrics_enabled?: boolean;
+    meter?: string;
+    notes?: string;
+    sequence?: string[];
+  } = {
+    ...(required ? { name: required.name } : {}),
+  };
+  if (!required && options.name) attributes.name = options.name;
+  if (options.bpm) attributes.bpm = parseNumberOption(options.bpm, '--bpm', { min: 1 });
+  if (options.chordChart) attributes.chord_chart = options.chordChart;
+  if (options.length) attributes.length = parseIntegerOption(options.length, '--length', { min: 0 });
+  if (options.lyricsEnabled !== undefined) attributes.lyrics_enabled = options.lyricsEnabled;
+  if (options.meter) attributes.meter = options.meter;
+  if (options.notes) attributes.notes = options.notes;
+  if (options.sequence) attributes.sequence = parseStringList(options.sequence, '--sequence');
+  return attributes;
+}
+
+function keyAttributesFromOptions(
+  options: {
+    startingKey?: string;
+    endingKey?: string;
+    name?: string;
+    alternateKeys?: string;
+  },
+  required: { starting_key: string },
+): KeyAttributes & { starting_key: string };
+function keyAttributesFromOptions(options: {
+  startingKey?: string;
+  endingKey?: string;
+  name?: string;
+  alternateKeys?: string;
+}): KeyAttributes;
+function keyAttributesFromOptions(options: {
+  startingKey?: string;
+  endingKey?: string;
+  name?: string;
+  alternateKeys?: string;
+}, required?: { starting_key: string }) {
+  const attributes: {
+    starting_key?: string;
+    ending_key?: string;
+    name?: string;
+    alternate_keys?: Array<{ name: string; key: string }>;
+  } = {
+    ...(required ? { starting_key: required.starting_key } : {}),
+  };
+  if (!required && options.startingKey) attributes.starting_key = options.startingKey;
+  if (options.endingKey) attributes.ending_key = options.endingKey;
+  if (options.name) attributes.name = options.name;
+  if (options.alternateKeys) attributes.alternate_keys = parseAlternateKeys(options.alternateKeys);
+  return attributes;
+}
 
 // People commands
 const people = program.command('people').description('Search and manage people');

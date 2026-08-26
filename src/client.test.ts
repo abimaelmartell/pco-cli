@@ -289,6 +289,125 @@ describe('PlanningCenterClient', () => {
       );
     });
 
+    it('creates a song with assignable attributes', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 201,
+        body: { text: async () => JSON.stringify({ data: { id: '42', type: 'Song' } }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.createSong({ title: 'Holy Forever', author: 'Chris Tomlin', hidden: false });
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/songs'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            data: { type: 'Song', attributes: { title: 'Holy Forever', author: 'Chris Tomlin', hidden: false } },
+          }),
+        }),
+      );
+    });
+
+    it('updates a song', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: { id: '42', type: 'Song' } }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.updateSong('42', { title: 'Holy Forever (Live)', ccli_number: 12345 });
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/songs/42'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({
+            data: { type: 'Song', id: '42', attributes: { title: 'Holy Forever (Live)', ccli_number: 12345 } },
+          }),
+        }),
+      );
+    });
+
+    it('assigns tags to a song, replacing the full set', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 204,
+        body: { text: async () => '' },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await expect(client.assignSongTags('42', ['5', '9'])).resolves.toBeNull();
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/songs/42/assign_tags'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            data: {
+              type: 'TagAssignment',
+              attributes: {},
+              relationships: {
+                tags: { data: [{ type: 'Tag', id: '5' }, { type: 'Tag', id: '9' }] },
+              },
+            },
+          }),
+        }),
+      );
+    });
+
+    it('creates an arrangement and a key on the nested routes', async () => {
+      requestMock
+        .mockResolvedValueOnce({
+          statusCode: 201,
+          body: { text: async () => JSON.stringify({ data: { id: '7', type: 'Arrangement' } }) },
+        } as Awaited<ReturnType<typeof request>>)
+        .mockResolvedValueOnce({
+          statusCode: 201,
+          body: { text: async () => JSON.stringify({ data: { id: '3', type: 'Key' } }) },
+        } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.createArrangement('42', { name: 'Default', meter: '4/4', bpm: 72 });
+      await client.createKey('42', '7', { starting_key: 'G', ending_key: 'G' });
+
+      expect(requestMock).toHaveBeenNthCalledWith(
+        1,
+        new URL('https://api.example.test/services/v2/songs/42/arrangements'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            data: { type: 'Arrangement', attributes: { name: 'Default', meter: '4/4', bpm: 72 } },
+          }),
+        }),
+      );
+      expect(requestMock).toHaveBeenNthCalledWith(
+        2,
+        new URL('https://api.example.test/services/v2/songs/42/arrangements/7/keys'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            data: { type: 'Key', attributes: { starting_key: 'G', ending_key: 'G' } },
+          }),
+        }),
+      );
+    });
+
+    it('lists tag groups filtered by tags_for', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: [] }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.listTagGroups({ 'where[tags_for]': 'song', per_page: 25, offset: 0 });
+
+      const expectedUrl = new URL('https://api.example.test/services/v2/tag_groups');
+      expectedUrl.searchParams.set('where[tags_for]', 'song');
+      expectedUrl.searchParams.set('per_page', '25');
+      expectedUrl.searchParams.set('offset', '0');
+      expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
+    });
+
     it('creates a plan item with a song', async () => {
       requestMock.mockResolvedValueOnce({
         statusCode: 201,

@@ -8,10 +8,17 @@ export type {
 export {
   matchUniqueSong,
   notifyStatus,
+  parseAlternateKeys,
   parseAssignments,
+  parseBooleanOption,
   parseIntegerOption,
+  parseMusicalKey,
+  parseNumberOption,
   parsePlanTimeType,
   parsePlanTimeWindow,
+  parseStringList,
+  parseTagGroupTarget,
+  parseTagIds,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
