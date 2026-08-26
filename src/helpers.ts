@@ -193,8 +193,16 @@ export function parseTagGroupTarget(value: string): TagGroupTarget {
   throw new Error(`--tags-for must be one of: ${TAG_GROUP_TARGETS.join(', ')}`);
 }
 
+function parseJsonOption(raw: string, name: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`${name} must be valid JSON`);
+  }
+}
+
 export function parseStringList(raw: string, name: string): string[] {
-  const parsed: unknown = JSON.parse(raw);
+  const parsed = parseJsonOption(raw, name);
   if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== 'string')) {
     throw new Error(`${name} must be a JSON array of strings`);
   }
@@ -204,7 +212,7 @@ export function parseStringList(raw: string, name: string): string[] {
 export type AlternateKeyInput = { name: string; key: MusicalKey };
 
 export function parseAlternateKeys(raw: string): AlternateKeyInput[] {
-  const parsed: unknown = JSON.parse(raw);
+  const parsed = parseJsonOption(raw, '--alternate-keys');
   if (!Array.isArray(parsed)) {
     throw new Error('--alternate-keys must be a JSON array');
   }

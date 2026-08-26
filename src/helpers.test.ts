@@ -136,6 +136,10 @@ describe('parseAlternateKeys', () => {
       { name: 'Capo 3', key: 'A' },
     ]);
   });
+
+  it('rejects malformed JSON with an option-focused error', () => {
+    expect(() => parseAlternateKeys('[{name:Capo}]')).toThrow('--alternate-keys must be valid JSON');
+  });
 });
 
 describe('parseNumberOption', () => {
@@ -158,6 +162,10 @@ describe('parseStringList', () => {
   it('rejects non-string arrays', () => {
     expect(() => parseStringList('[1,2]', '--sequence')).toThrow('--sequence must be a JSON array of strings');
     expect(() => parseStringList('{"a":1}', '--sequence')).toThrow('--sequence must be a JSON array of strings');
+  });
+
+  it('rejects malformed JSON with an option-focused error', () => {
+    expect(() => parseStringList('[Verse 1', '--sequence')).toThrow('--sequence must be valid JSON');
   });
 });
 
