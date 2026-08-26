@@ -2,6 +2,14 @@
 import { Command } from 'commander';
 import { PlanningCenterClient } from './client.js';
 import { loadConfig } from './config.js';
+import {
+  asSingleResource,
+  matchUniqueSong,
+  notifyStatus,
+  parseAssignments,
+  parseTeamReminders,
+  planningCenterUrl,
+} from './helpers.js';
 
 const program = new Command();
 
@@ -123,13 +131,12 @@ teams
 teams
   .command('positions')
   .description('List positions for a team')
-  .argument('<service-type-id>', 'Service type ID')
   .argument('<team-id>', 'Team ID')
   .option('--per-page <number>', 'Number of results per page', '25')
   .option('--offset <number>', 'Number of results to skip', '0')
-  .action(async (serviceTypeId, teamId, options) => {
+  .action(async (teamId, options) => {
     const client = getClient();
-    const result = await client.listTeamPositions(serviceTypeId, teamId, {
+    const result = await client.listTeamPositions(teamId, {
       per_page: parseInt(options.perPage),
       offset: parseInt(options.offset),
     });
@@ -166,7 +173,10 @@ plans
   .action(async (serviceTypeId, planId) => {
     const client = getClient();
     const result = await client.getPlan(serviceTypeId, planId);
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify({
+      ...result,
+      planning_center_url: planningCenterUrl(asSingleResource(result.data)),
+    }, null, 2));
   });
 
 plans
@@ -193,15 +203,27 @@ plans
     }
 
     if (options.startsAt) {
-      await client.createPlanTime(serviceTypeId, planData.id, {
+      const timeAttributes: {
+        starts_at: string;
+        ends_at?: string;
+        time_type?: 'service' | 'rehearsal' | 'other';
+      } = {
         starts_at: options.startsAt,
-        ends_at: options.endsAt,
-        time_type: options.timeType,
-      });
+      };
+      if (options.endsAt) {
+        timeAttributes.ends_at = options.endsAt;
+      }
+      if (options.timeType === 'service' || options.timeType === 'rehearsal' || options.timeType === 'other') {
+        timeAttributes.time_type = options.timeType;
+      }
+      await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
     }
 
     const finalResult = await client.getPlan(serviceTypeId, planData.id);
-    console.log(JSON.stringify(finalResult, null, 2));
+    console.log(JSON.stringify({
+      ...finalResult,
+      planning_center_url: planningCenterUrl(asSingleResource(finalResult.data)),
+    }, null, 2));
   });
 
 // Plan items commands
@@ -240,16 +262,7 @@ planItems
 
     if (!songId && options.title) {
       const searchResult = await client.searchSongs(options.title);
-      const songs = Array.isArray(searchResult.data) ? searchResult.data : [searchResult.data];
-      
-      if (songs.length === 0) {
-        throw new Error(`No songs found matching "${options.title}"`);
-      }
-      if (songs.length > 1) {
-        throw new Error(`Multiple songs found matching "${options.title}". Use --song-id to specify exactly which song.`);
-      }
-      
-      songId = songs[0]?.id;
+      songId = matchUniqueSong(searchResult, options.title).id;
     }
 
     if (!songId) {
@@ -297,6 +310,26 @@ planTeamMembers
   });
 
 planTeamMembers
+  .command('notify-status')
+  .description('Show which assigned people still need the first scheduling email')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, planId, options) => {
+    const client = getClient();
+    const result = await client.listPlanTeamMembers(serviceTypeId, planId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify({
+      ok: true,
+      note: 'The Services API cannot send Accept/Decline scheduling emails. Use team_reminders or the Planning Center UI.',
+      team_members: notifyStatus(result),
+    }, null, 2));
+  });
+
+planTeamMembers
   .command('assign')
   .description('Assign a person to a plan')
   .argument('<service-type-id>', 'Service type ID')
@@ -325,12 +358,11 @@ planReminders
   .argument('<service-type-id>', 'Service type ID')
   .argument('<plan-id>', 'Plan ID')
   .argument('<plan-time-id>', 'Plan time ID')
-  .option('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
-  .action(async (serviceTypeId, planId, planTimeId, options) => {
+  .requiredOption('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
+  .action(async (serviceTypeId, _planId, planTimeId, options) => {
     const client = getClient();
-    const teamReminders = options.teamReminders ? JSON.parse(options.teamReminders) : {};
-    const result = await client.updatePlanTime(serviceTypeId, planId, planTimeId, {
-      team_reminders: teamReminders,
+    const result = await client.updatePlanTime(serviceTypeId, planTimeId, {
+      team_reminders: parseTeamReminders(options.teamReminders),
     });
     console.log(JSON.stringify(result, null, 2));
   });
@@ -350,81 +382,89 @@ program
   .option('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
   .action(async (serviceTypeId, options) => {
     const client = getClient();
-    const results: Record<string, unknown> = {};
+    const assignments = options.assignments ? parseAssignments(options.assignments) : [];
+    const teamReminders = options.teamReminders ? parseTeamReminders(options.teamReminders) : undefined;
+    const songTitles: string[] = options.songs ?? [];
+    const resolvedSongs = [];
+
+    for (const title of songTitles) {
+      const searchResult = await client.searchSongs(title);
+      resolvedSongs.push({ title, song: matchUniqueSong(searchResult, title) });
+    }
 
     const planResult = await client.createPlan(serviceTypeId, {
       title: options.title,
       series_title: options.seriesTitle,
       public: options.public,
     });
-    const planData = Array.isArray(planResult.data) ? planResult.data[0] : planResult.data;
+    const planData = asSingleResource(planResult.data);
     if (!planData) {
       throw new Error('Failed to create plan');
     }
-    results.plan = planData;
 
-    const planTimeResult = await client.createPlanTime(serviceTypeId, planData.id, {
+    const planTimeAttributes: {
+      starts_at: string;
+      ends_at?: string;
+      time_type: 'service';
+      team_reminders?: Record<string, number>;
+    } = {
       starts_at: options.startsAt,
-      ends_at: options.endsAt,
       time_type: 'service',
-    });
-    const planTimeData = Array.isArray(planTimeResult.data) ? planTimeResult.data[0] : planTimeResult.data;
+    };
+    if (options.endsAt) {
+      planTimeAttributes.ends_at = options.endsAt;
+    }
+    if (teamReminders) {
+      planTimeAttributes.team_reminders = teamReminders;
+    }
+
+    const planTimeResult = await client.createPlanTime(serviceTypeId, planData.id, planTimeAttributes);
+    const planTimeData = asSingleResource(planTimeResult.data);
     if (!planTimeData) {
       throw new Error('Failed to create plan time');
     }
-    results.plan_time = planTimeData;
 
-    if (options.songs && options.songs.length > 0) {
-      results.songs = [];
-      for (const title of options.songs) {
-        const searchResult = await client.searchSongs(title);
-        const songs = Array.isArray(searchResult.data) ? searchResult.data : [searchResult.data];
-        
-        if (songs.length === 0) {
-          throw new Error(`No songs found matching "${title}"`);
-        }
-        if (songs.length > 1) {
-          throw new Error(`Multiple songs found matching "${title}". Please provide a more specific title.`);
-        }
-
-        const firstSong = songs[0];
-        if (!firstSong) {
-          throw new Error(`No songs found matching "${title}"`);
-        }
-
-        const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
-          song_id: firstSong.id,
-        });
-        (results.songs as unknown[]).push(itemResult.data);
-      }
-    }
-
-    if (options.assignments) {
-      const assignments = JSON.parse(options.assignments);
-      results.assignments = [];
-      for (const assignment of assignments) {
-        const memberResult = await client.createPlanTeamMember(serviceTypeId, planData.id, {
-          person_id: assignment.person_id,
-          team_id: assignment.team_id,
-          team_position_name: assignment.position,
-          prepare_notification: assignment.prepare_notification ?? false,
-        });
-        (results.assignments as unknown[]).push(memberResult.data);
-      }
-    }
-
-    if (options.teamReminders) {
-      const teamReminders = JSON.parse(options.teamReminders);
-      await client.updatePlanTime(serviceTypeId, planData.id, planTimeData.id, {
-        team_reminders: teamReminders,
+    const songItems = [];
+    for (const { song } of resolvedSongs) {
+      const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
+        song_id: song.id,
       });
-      results.team_reminders = teamReminders;
+      songItems.push(itemResult.data);
     }
 
-    const planUrl = (planData.links as Record<string, string> | undefined)?.self;
-    results.planning_center_url = planUrl ?? `https://services.planningcenteronline.com/plans/${planData.id}`;
-    
-    console.log(JSON.stringify({ ok: true, ...results }, null, 2));
+    const assignmentResults = [];
+    for (const assignment of assignments) {
+      const memberAttributes: {
+        person_id: string;
+        team_id: string;
+        team_position_name?: string;
+        prepare_notification?: boolean;
+      } = {
+        person_id: assignment.person_id,
+        team_id: assignment.team_id,
+      };
+      if (assignment.position) {
+        memberAttributes.team_position_name = assignment.position;
+      }
+      if (assignment.prepare_notification !== undefined) {
+        memberAttributes.prepare_notification = assignment.prepare_notification;
+      }
+      const memberResult = await client.createPlanTeamMember(serviceTypeId, planData.id, memberAttributes);
+      assignmentResults.push(memberResult.data);
+    }
+
+    const finalPlan = await client.getPlan(serviceTypeId, planData.id);
+    const plan = asSingleResource(finalPlan.data) ?? planData;
+
+    console.log(JSON.stringify({
+      ok: true,
+      plan,
+      plan_time: planTimeData,
+      songs: songItems,
+      assignments: assignmentResults,
+      ...(teamReminders ? { team_reminders: teamReminders } : {}),
+      planning_center_url: planningCenterUrl(plan),
+    }, null, 2));
   });
 
 program.parseAsync().catch((error: unknown) => {

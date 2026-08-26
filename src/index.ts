@@ -5,5 +5,12 @@ export type {
   PcoJsonApiResource, 
   PcoJsonApiResponse 
 } from './client.js';
+export {
+  matchUniqueSong,
+  notifyStatus,
+  parseAssignments,
+  parseTeamReminders,
+  planningCenterUrl,
+} from './helpers.js';
 export { loadConfig } from './config.js';
 export type { PcoConfig } from './config.js';

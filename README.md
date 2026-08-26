@@ -65,11 +65,11 @@ pco people search "Sarah" --per-page 10
 
 ### Teams
 
-List teams and positions for a service type:
+List teams for a service type, and positions for a team:
 
 ```bash
 pco teams list <service-type-id>
-pco teams positions <service-type-id> <team-id>
+pco teams positions <team-id>
 ```
 
 ### Plans
@@ -81,7 +81,7 @@ Create and manage service plans:
 pco plans list <service-type-id>
 pco plans list <service-type-id> --filter future --order sort_date
 
-# Get a specific plan
+# Get a specific plan (includes planning_center_url for the Services web UI)
 pco plans get <service-type-id> <plan-id>
 
 # Create a plan with optional service time
@@ -122,6 +122,9 @@ Assign people to plans:
 # List team members on a plan
 pco plan-team-members list <service-type-id> <plan-id>
 
+# See who still needs the first Accept/Decline scheduling email
+pco plan-team-members notify-status <service-type-id> <plan-id>
+
 # Assign a person to a plan
 pco plan-team-members assign <service-type-id> <plan-id> <person-id> <team-id> \
   --position "Worship Leader" \
@@ -157,12 +160,12 @@ pco create-worship-plan <service-type-id> \
 ```
 
 This command:
-1. Creates a plan with the specified title and series
-2. Adds a service time with the start/end dates
-3. Searches for each song by title and adds it to the plan (fails if titles are ambiguous)
-4. Assigns team members with their positions
-5. Sets team reminder schedules
-6. Returns the Planning Center URL for the plan
+1. Validates assignment JSON and reminder offsets, then looks up each song title in the church library (fails before creating anything if a title is missing or not unique)
+2. Creates a plan with the specified title and series
+3. Adds a service time, including `team_reminders` when provided
+4. Adds the matched songs in order
+5. Assigns team members with their positions
+6. Returns `planning_center_url` from the plan resource (the Services web UI URL, not the API `links.self`)
 
 ## Important API Limitations
 
@@ -176,12 +179,13 @@ Planning Center's "Send scheduling email" button (the one that sends Accept/Decl
 
 2. **Manual Sending:** After creating a plan via the CLI, use the returned `planning_center_url` to open the plan in the Planning Center web UI and manually send scheduling emails.
 
-3. **Check Notification Status:** Use `plan-team-members list` to see team member notification metadata (`notification_sent_at`, `prepare_notification`, `notification_prepared_at`) to track who still needs scheduling emails.
+3. **Check Notification Status:** Use `plan-team-members notify-status` (or `list`) to see `notification_sent_at`, `prepare_notification`, and `notification_prepared_at` and who still needs the first scheduling email.
 
 ## Project layout
 
 - `src/cli.ts` wires the command-line interface.
 - `src/client.ts` contains the reusable Planning Center API client.
+- `src/helpers.ts` maps CLI arguments and JSON:API resources.
 - `src/config.ts` loads and validates environment configuration.
 - `src/index.ts` exports library primitives for programmatic use.
 

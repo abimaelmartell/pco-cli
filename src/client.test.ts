@@ -116,10 +116,23 @@ describe('PlanningCenterClient', () => {
       const result = await client.searchSongs('Amazing Grace');
 
       expect(result.data).toEqual([{ id: '1', type: 'Song', attributes: { title: 'Amazing Grace' } }]);
-      expect(requestMock).toHaveBeenCalledWith(
-        new URL('https://api.example.test/services/v2/songs?where=Amazing+Grace'),
-        expect.any(Object)
-      );
+      const expectedUrl = new URL('https://api.example.test/services/v2/songs');
+      expectedUrl.searchParams.set('where[title]', 'Amazing Grace');
+      expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
+    });
+
+    it('searches people by search_name', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: [{ id: '9', type: 'Person' }] }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.searchPeople('Ada Lovelace');
+
+      const expectedUrl = new URL('https://api.example.test/people/v2/people');
+      expectedUrl.searchParams.set('where[search_name]', 'Ada Lovelace');
+      expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
     });
 
     it('creates a plan with attributes', async () => {
@@ -212,7 +225,7 @@ describe('PlanningCenterClient', () => {
           method: 'POST',
           body: JSON.stringify({
             data: {
-              type: 'TeamMember',
+              type: 'PlanPerson',
               attributes: {
                 person_id: '50',
                 team_id: '10',
@@ -231,13 +244,13 @@ describe('PlanningCenterClient', () => {
       } as Awaited<ReturnType<typeof request>>);
 
       const client = new PlanningCenterClient(baseConfig);
-      const result = await client.updatePlanTime('1', '123', '456', {
+      const result = await client.updatePlanTime('1', '456', {
         team_reminders: { '10': 5 },
       });
 
       expect(result.data).toMatchObject({ id: '456', type: 'PlanTime' });
       expect(requestMock).toHaveBeenCalledWith(
-        new URL('https://api.example.test/services/v2/service_types/1/plans/123/plan_times/456'),
+        new URL('https://api.example.test/services/v2/service_types/1/plan_times/456'),
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify({
@@ -263,6 +276,21 @@ describe('PlanningCenterClient', () => {
       expect(result.data).toEqual([{ id: '10', type: 'Team', attributes: { name: 'Worship Team' } }]);
       expect(requestMock).toHaveBeenCalledWith(
         new URL('https://api.example.test/services/v2/service_types/1/teams'),
+        expect.any(Object)
+      );
+    });
+
+    it('lists team positions from the team nested route', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: [{ id: '3', type: 'TeamPosition' }] }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.listTeamPositions('10');
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/teams/10/team_positions'),
         expect.any(Object)
       );
     });

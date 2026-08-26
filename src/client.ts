@@ -85,16 +85,16 @@ export class PlanningCenterClient {
   }
 
   async searchSongs(searchQuery: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
-    return this.requestJson({ 
-      path: '/services/v2/songs', 
-      query: { where: searchQuery, ...(query ?? {}) } 
+    return this.requestJson({
+      path: '/services/v2/songs',
+      query: { 'where[title]': searchQuery, ...(query ?? {}) },
     });
   }
 
   async searchPeople(searchQuery: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
-    return this.requestJson({ 
-      path: '/people/v2/people', 
-      query: { where: searchQuery, ...(query ?? {}) } 
+    return this.requestJson({
+      path: '/people/v2/people',
+      query: { 'where[search_name]': searchQuery, ...(query ?? {}) },
     });
   }
 
@@ -105,10 +105,10 @@ export class PlanningCenterClient {
     });
   }
 
-  async listTeamPositions(serviceTypeId: string, teamId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
-    return this.requestJson({ 
-      path: `/services/v2/service_types/${serviceTypeId}/teams/${teamId}/team_positions`, 
-      query: query ?? {}
+  async listTeamPositions(teamId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/teams/${teamId}/team_positions`,
+      query: query ?? {},
     });
   }
 
@@ -189,16 +189,16 @@ export class PlanningCenterClient {
     return this.requestJson({
       method: 'POST',
       path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}/team_members`,
-      body: { data: { type: 'TeamMember', attributes } }
+      body: { data: { type: 'PlanPerson', attributes } }
     });
   }
 
-  async updatePlanTime(serviceTypeId: string, planId: string, planTimeId: string, attributes: {
+  async updatePlanTime(serviceTypeId: string, planTimeId: string, attributes: {
     team_reminders?: Record<string, number>;
   }): Promise<PcoJsonApiResponse> {
     return this.requestJson({
       method: 'PATCH',
-      path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}/plan_times/${planTimeId}`,
+      path: `/services/v2/service_types/${serviceTypeId}/plan_times/${planTimeId}`,
       body: { data: { type: 'PlanTime', id: planTimeId, attributes } }
     });
   }
