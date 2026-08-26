@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
+import type { ArrangementAttributes, KeyAttributes } from './client.js';
 import { authMode, loadConfigFromAuthOptions } from './config.js';
 import {
   asSingleResource,
@@ -418,6 +419,29 @@ function songAttributesFromOptions(options: {
   return attributes;
 }
 
+function arrangementAttributesFromOptions(
+  options: {
+    name?: string;
+    bpm?: string;
+    chordChart?: string;
+    length?: string;
+    lyricsEnabled?: boolean;
+    meter?: string;
+    notes?: string;
+    sequence?: string;
+  },
+  required: { name: string },
+): ArrangementAttributes & { name: string };
+function arrangementAttributesFromOptions(options: {
+  name?: string;
+  bpm?: string;
+  chordChart?: string;
+  length?: string;
+  lyricsEnabled?: boolean;
+  meter?: string;
+  notes?: string;
+  sequence?: string;
+}): ArrangementAttributes;
 function arrangementAttributesFromOptions(options: {
   name?: string;
   bpm?: string;
@@ -451,6 +475,21 @@ function arrangementAttributesFromOptions(options: {
   return attributes;
 }
 
+function keyAttributesFromOptions(
+  options: {
+    startingKey?: string;
+    endingKey?: string;
+    name?: string;
+    alternateKeys?: string;
+  },
+  required: { starting_key: string },
+): KeyAttributes & { starting_key: string };
+function keyAttributesFromOptions(options: {
+  startingKey?: string;
+  endingKey?: string;
+  name?: string;
+  alternateKeys?: string;
+}): KeyAttributes;
 function keyAttributesFromOptions(options: {
   startingKey?: string;
   endingKey?: string;

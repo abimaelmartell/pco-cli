@@ -88,7 +88,7 @@ Pagination on list/search commands: `--per-page` (default 25) and `--offset`.
 | Arrangements | `pco arrangements list <song-id>` (`--include keys`) |
 | Create/update arrangement | `pco arrangements create` / `update` |
 | Arrangement tags | `pco arrangements assign-tags <song-id> <arrangement-id> --tag-ids 12` |
-| Keys | `pco keys list \| create <song-id> <arrangement-id> --starting-key G` |
+| Keys | `pco keys list <song-id> <arrangement-id>` / `pco keys create <song-id> <arrangement-id> --starting-key G` |
 | Tag groups | `pco tag-groups list --tags-for song` / `pco tag-groups tags <tag-group-id>` |
 | People | `pco people search "<name>"` |
 | Teams | `pco teams list <service-type-id>` |

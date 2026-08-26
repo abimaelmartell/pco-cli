@@ -8,8 +8,11 @@ import {
   parseIntegerOption,
   parseIsoDateTime,
   parseMusicalKey,
+  parseNumberOption,
   parsePlanTimeType,
   parsePlanTimeWindow,
+  parseStringList,
+  parseTagGroupTarget,
   parseTagIds,
   parseTeamReminders,
   planningCenterUrl,
@@ -132,6 +135,40 @@ describe('parseAlternateKeys', () => {
     expect(parseAlternateKeys('[{"name":"Capo 3","key":"A"}]')).toEqual([
       { name: 'Capo 3', key: 'A' },
     ]);
+  });
+});
+
+describe('parseNumberOption', () => {
+  it('accepts integers and decimals', () => {
+    expect(parseNumberOption('72', '--bpm')).toBe(72);
+    expect(parseNumberOption('72.5', '--bpm')).toBe(72.5);
+  });
+
+  it('rejects non-numeric values and out-of-range numbers', () => {
+    expect(() => parseNumberOption('fast', '--bpm')).toThrow('--bpm must be a number');
+    expect(() => parseNumberOption('0', '--bpm', { min: 1 })).toThrow('--bpm must be >= 1');
+  });
+});
+
+describe('parseStringList', () => {
+  it('parses a JSON array of strings', () => {
+    expect(parseStringList('["Verse 1","Chorus 1"]', '--sequence')).toEqual(['Verse 1', 'Chorus 1']);
+  });
+
+  it('rejects non-string arrays', () => {
+    expect(() => parseStringList('[1,2]', '--sequence')).toThrow('--sequence must be a JSON array of strings');
+    expect(() => parseStringList('{"a":1}', '--sequence')).toThrow('--sequence must be a JSON array of strings');
+  });
+});
+
+describe('parseTagGroupTarget', () => {
+  it('accepts documented tags_for values', () => {
+    expect(parseTagGroupTarget('song')).toBe('song');
+    expect(parseTagGroupTarget('arrangement')).toBe('arrangement');
+  });
+
+  it('rejects unknown targets', () => {
+    expect(() => parseTagGroupTarget('key')).toThrow('--tags-for must be one of: person, song, arrangement, media');
   });
 });
 

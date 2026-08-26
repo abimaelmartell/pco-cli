@@ -378,7 +378,7 @@ export class PlanningCenterClient {
     });
   }
 
-  async createArrangement(songId: string, attributes: ArrangementAttributes): Promise<PcoJsonApiResponse> {
+  async createArrangement(songId: string, attributes: ArrangementAttributes & { name: string }): Promise<PcoJsonApiResponse> {
     return this.requestJson({
       method: 'POST',
       path: `/services/v2/songs/${songId}/arrangements`,
@@ -422,7 +422,7 @@ export class PlanningCenterClient {
     });
   }
 
-  async createKey(songId: string, arrangementId: string, attributes: KeyAttributes): Promise<PcoJsonApiResponse> {
+  async createKey(songId: string, arrangementId: string, attributes: KeyAttributes & { starting_key: string }): Promise<PcoJsonApiResponse> {
     return this.requestJson({
       method: 'POST',
       path: `/services/v2/songs/${songId}/arrangements/${arrangementId}/keys`,
