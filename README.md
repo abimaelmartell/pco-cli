@@ -34,12 +34,17 @@ Copy `.env.example` to `.env` and set credentials:
 cp .env.example .env
 ```
 
+To store credentials once for every working directory, copy the same file to `~/.config/pco/env` (or `$XDG_CONFIG_HOME/pco/env`). Override the path with `PCO_CONFIG_PATH` if needed.
+
 Supported authentication inputs:
 
 - `PCO_ACCESS_TOKEN` for bearer token flows.
-- `PCO_APP_ID` and `PCO_SECRET` for basic auth flows.
+- `PCO_CLIENT_ID` and `PCO_SECRET` for basic auth. Planning Center personal access tokens are labeled Client ID + Secret.
+- `PCO_APP_ID` is a compatible alias of `PCO_CLIENT_ID`. If both are set to different values, the CLI exits with an error.
 
-You can also pass credentials via CLI flags: `--access-token`, `--app-id`, and `--secret`.
+You can also pass credentials via CLI flags: `--access-token`, `--client-id` (alias `--app-id`), and `--secret`. Flags override environment values. Environment values override a project `.env`, which overrides the global config file. You do not need to pass flags on every command when credentials are in the environment or a config file.
+
+Bearer `PCO_ACCESS_TOKEN` / `--access-token` wins over basic auth when both are present.
 
 ## Usage
 

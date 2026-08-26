@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
-import { loadConfig } from './config.js';
+import { authMode, loadConfigFromAuthOptions } from './config.js';
 import {
   asSingleResource,
   matchUniqueSong,
@@ -23,40 +23,29 @@ program
   .version('0.1.0')
   .option('--base-url <url>', 'Override the Planning Center API base URL')
   .option('--access-token <token>', 'Use a Planning Center bearer access token')
-  .option('--app-id <id>', 'Use a Planning Center app id for basic auth')
+  .option('--client-id <id>', 'Use a Planning Center client id for basic auth')
+  .option('--app-id <id>', 'Use a Planning Center app id for basic auth (alias of --client-id)')
   .option('--secret <secret>', 'Use a Planning Center secret for basic auth');
 
+function loadRuntimeConfig() {
+  return loadConfigFromAuthOptions(program.opts());
+}
+
 function getClient(): PlanningCenterClient {
-  const opts = program.opts();
-  const config = loadConfig({
-    ...process.env,
-    PCO_BASE_URL: opts.baseUrl ?? process.env.PCO_BASE_URL,
-    PCO_ACCESS_TOKEN: opts.accessToken ?? process.env.PCO_ACCESS_TOKEN,
-    PCO_APP_ID: opts.appId ?? process.env.PCO_APP_ID,
-    PCO_SECRET: opts.secret ?? process.env.PCO_SECRET,
-  });
-  return new PlanningCenterClient(config);
+  return new PlanningCenterClient(loadRuntimeConfig());
 }
 
 program
   .command('health')
   .description('Validate local CLI configuration without calling an endpoint')
   .action(() => {
-    const opts = program.opts();
-    const config = loadConfig({
-      ...process.env,
-      PCO_BASE_URL: opts.baseUrl ?? process.env.PCO_BASE_URL,
-      PCO_ACCESS_TOKEN: opts.accessToken ?? process.env.PCO_ACCESS_TOKEN,
-      PCO_APP_ID: opts.appId ?? process.env.PCO_APP_ID,
-      PCO_SECRET: opts.secret ?? process.env.PCO_SECRET,
-    });
-
+    const config = loadRuntimeConfig();
     const client = new PlanningCenterClient(config);
 
     console.log(JSON.stringify({
       ok: true,
       baseUrl: config.PCO_BASE_URL,
-      auth: config.PCO_ACCESS_TOKEN ? 'bearer' : config.PCO_APP_ID && config.PCO_SECRET ? 'basic' : 'none',
+      auth: authMode(config),
       clientReady: Boolean(client),
     }, null, 2));
   });

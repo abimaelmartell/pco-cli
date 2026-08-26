@@ -15,5 +15,10 @@ export {
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
-export { loadConfig } from './config.js';
-export type { PcoConfig } from './config.js';
+export {
+  authMode,
+  globalConfigPath,
+  loadConfig,
+  loadConfigFromAuthOptions,
+} from './config.js';
+export type { AuthMode, AuthOptionOverrides, PcoConfig } from './config.js';
