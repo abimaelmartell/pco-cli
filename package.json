@@ -1,5 +1,5 @@
 {
-  "name": "pco-cli",
+  "name": "@abimaelmartell/pco-cli",
   "version": "0.1.0",
   "description": "Agent-friendly TypeScript CLI for the Planning Center API.",
   "type": "module",
@@ -13,7 +13,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "check": "tsc -p tsconfig.json --noEmit",
     "dev": "tsx src/cli.ts",
     "lint": "eslint .",
@@ -30,6 +30,17 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abimaelmartell/pco-cli.git"
+  },
+  "homepage": "https://github.com/abimaelmartell/pco-cli#readme",
+  "bugs": {
+    "url": "https://github.com/abimaelmartell/pco-cli/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20.11"
   },
