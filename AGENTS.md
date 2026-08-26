@@ -17,6 +17,7 @@ Keep endpoint commands small and composable. Current Services worship-planning s
 - `songs search` / `people search`
 - `teams list` / `teams positions`
 - `plans list` / `get` / `create`
+- `plan-times list`
 - `plan-items list` / `add-song`
 - `plan-team-members list` / `notify-status` / `assign`
 - `plan-reminders set`

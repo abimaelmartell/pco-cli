@@ -66,6 +66,9 @@ export function parseIntegerOption(
     throw new Error(`${name} must be an integer`);
   }
   const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || String(parsed) !== value) {
+    throw new Error(`${name} must be a safe integer`);
+  }
   if (bounds?.min !== undefined && parsed < bounds.min) {
     throw new Error(`${name} must be >= ${bounds.min}`);
   }

@@ -156,7 +156,7 @@ export class PlanningCenterClient {
         : undefined;
       throw new PlanningCenterApiError({
         status: response.statusCode,
-        message: errors?.[0]?.detail ?? `Planning Center API request failed with ${response.statusCode}`,
+        message: errors?.[0]?.detail ?? errors?.[0]?.title ?? `Planning Center API request failed with ${response.statusCode}`,
         ...(errors ? { errors } : {}),
       });
     }
@@ -212,9 +212,10 @@ export class PlanningCenterClient {
     });
   }
 
-  async getPlan(serviceTypeId: string, planId: string): Promise<PcoJsonApiResponse> {
-    return this.requestJson({ 
-      path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}` 
+  async getPlan(serviceTypeId: string, planId: string, query?: { include?: string }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}`,
+      query: { include: 'plan_times', ...(query ?? {}) },
     });
   }
 
@@ -241,6 +242,13 @@ export class PlanningCenterClient {
       method: 'POST',
       path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}/plan_times`,
       body: { data: { type: 'PlanTime', attributes } }
+    });
+  }
+
+  async listPlanTimes(serviceTypeId: string, planId: string, query?: { per_page?: number; offset?: number }): Promise<PcoJsonApiResponse> {
+    return this.requestJson({
+      path: `/services/v2/service_types/${serviceTypeId}/plans/${planId}/plan_times`,
+      query: query ?? {},
     });
   }
 

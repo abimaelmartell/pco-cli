@@ -84,13 +84,16 @@ pco plans list <service-type-id> --filter future --order sort_date
 # Get a specific plan (includes planning_center_url for the Services web UI)
 pco plans get <service-type-id> <plan-id>
 
-# Create a plan with optional service time
+# Create a plan with optional service time (returns plan_time id for reminders)
 pco plans create <service-type-id> \
   --title "Sunday Worship" \
   --series-title "Summer Series" \
   --public \
   --starts-at "2026-08-30T10:00:00Z" \
   --ends-at "2026-08-30T11:30:00Z"
+
+# List times on a plan
+pco plan-times list <service-type-id> <plan-id>
 ```
 
 ### Plan Items (Songs)

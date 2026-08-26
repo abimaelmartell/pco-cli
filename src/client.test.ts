@@ -91,6 +91,19 @@ describe('PlanningCenterClient', () => {
     });
   });
 
+  it('uses the error title when detail is missing', async () => {
+    requestMock.mockResolvedValueOnce({
+      statusCode: 422,
+      body: { text: async () => JSON.stringify({ errors: [{ title: 'Unprocessable Entity' }] }) },
+    } as Awaited<ReturnType<typeof request>>);
+
+    const client = new PlanningCenterClient(baseConfig);
+    await expect(client.requestJson({ path: '/invalid' })).rejects.toMatchObject({
+      status: 422,
+      message: 'Unprocessable Entity',
+    });
+  });
+
   it('keeps HTTP status when an error body is not JSON', async () => {
     requestMock.mockResolvedValueOnce({
       statusCode: 502,
@@ -360,6 +373,36 @@ describe('PlanningCenterClient', () => {
       expectedUrl.searchParams.set('filter', 'future');
       expectedUrl.searchParams.set('order', 'sort_date');
       expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
+    });
+
+    it('gets a plan including its plan times', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: { id: '123', type: 'Plan' } }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.getPlan('1', '123');
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/service_types/1/plans/123?include=plan_times'),
+        expect.any(Object),
+      );
+    });
+
+    it('lists plan times for a plan', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: [{ id: '456', type: 'PlanTime' }] }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.listPlanTimes('1', '123');
+
+      expect(requestMock).toHaveBeenCalledWith(
+        new URL('https://api.example.test/services/v2/service_types/1/plans/123/plan_times'),
+        expect.any(Object),
+      );
     });
 
     it('lists team positions from the team nested route', async () => {

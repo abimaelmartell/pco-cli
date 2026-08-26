@@ -193,6 +193,7 @@ plans
       throw new Error('Failed to create plan');
     }
 
+    let planTime;
     if (options.startsAt) {
       const timeAttributes: {
         starts_at: string;
@@ -206,7 +207,8 @@ plans
         timeAttributes.ends_at = options.endsAt;
       }
       try {
-        await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
+        const timeResult = await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
+        planTime = asSingleResource(timeResult.data);
       } catch (error: unknown) {
         throw new PartialWorkflowError(
           error instanceof Error ? error.message : 'Failed to create plan time',
@@ -223,6 +225,7 @@ plans
       const finalResult = await client.getPlan(serviceTypeId, planData.id);
       console.log(JSON.stringify({
         ...finalResult,
+        ...(planTime ? { plan_time: planTime } : {}),
         planning_center_url: planningCenterUrl(asSingleResource(finalResult.data)),
       }, null, 2));
     } catch (error: unknown) {
@@ -231,11 +234,27 @@ plans
         error instanceof Error ? error.message : 'Failed to reload the created plan',
         {
           plan: planData,
+          ...(planTime ? { plan_time: planTime } : {}),
           planning_center_url: planningCenterUrl(planData),
           cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
         },
       );
     }
+  });
+
+const planTimes = program.command('plan-times').description('Manage plan service times');
+
+planTimes
+  .command('list')
+  .description('List times for a plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, planId, options) => {
+    const client = getClient();
+    const result = await client.listPlanTimes(serviceTypeId, planId, paginationFromOptions(options));
+    console.log(JSON.stringify(result, null, 2));
   });
 
 // Plan items commands

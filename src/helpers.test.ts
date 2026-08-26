@@ -31,6 +31,7 @@ describe('parseIntegerOption', () => {
     expect(() => parseIntegerOption('3.7', '--sequence')).toThrow('--sequence must be an integer');
     expect(() => parseIntegerOption('2x', '--per-page')).toThrow('--per-page must be an integer');
     expect(() => parseIntegerOption('101', '--per-page', { min: 1, max: 100 })).toThrow('--per-page must be <= 100');
+    expect(() => parseIntegerOption('9007199254740993', '--sequence')).toThrow('--sequence must be a safe integer');
   });
 });
 
