@@ -16,6 +16,9 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -27,6 +30,9 @@ jobs:
           # Do not set registry-url: it writes an empty NODE_AUTH_TOKEN and
           # npm then skips OIDC trusted publishing (E404 on publish).
           package-manager-cache: false
+
+      - name: Install npm CLI for trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -51,8 +57,10 @@ jobs:
           fi
 
       - name: Publish
-        run: npm publish --access public
-        env:
-          # setup-node@v6 still exports a placeholder token; clear it so npm
-          # uses GitHub OIDC trusted publishing instead of classic auth.
-          NODE_AUTH_TOKEN: ''
+        run: |
+          echo "npm $(npm --version)"
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL is unset; GitHub OIDC is not available" >&2
+            exit 1
+          fi
+          npm publish --access public
