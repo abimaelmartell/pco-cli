@@ -261,7 +261,7 @@ npm trust github @abimaelmartell/pco-cli --repo abimaelmartell/pco-cli --file pu
    git push origin v0.1.1
    ```
 
-The Publish workflow runs `npm ci`, check, test, lint, then `npm publish --access public`. Do not set `NODE_AUTH_TOKEN` or `NPM_TOKEN` on that job.
+The Publish workflow runs `npm ci`, check, test, lint, then `npm publish --access public`. Do not set `NODE_AUTH_TOKEN` or `NPM_TOKEN` on that job, and do not pass `registry-url` to `actions/setup-node` — both make npm skip OIDC trusted publishing.
 
 Local dry run:
 
