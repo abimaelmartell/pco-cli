@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { PlanningCenterClient } from './client.js';
+import { PlanningCenterClient, type PcoApiError } from './client.js';
 import { loadConfig } from './config.js';
 
 const program = new Command();
@@ -13,6 +13,18 @@ program
   .option('--access-token <token>', 'Use a Planning Center bearer access token')
   .option('--app-id <id>', 'Use a Planning Center app id for basic auth')
   .option('--secret <secret>', 'Use a Planning Center secret for basic auth');
+
+function getClient(): PlanningCenterClient {
+  const opts = program.opts();
+  const config = loadConfig({
+    ...process.env,
+    PCO_BASE_URL: opts.baseUrl ?? process.env.PCO_BASE_URL,
+    PCO_ACCESS_TOKEN: opts.accessToken ?? process.env.PCO_ACCESS_TOKEN,
+    PCO_APP_ID: opts.appId ?? process.env.PCO_APP_ID,
+    PCO_SECRET: opts.secret ?? process.env.PCO_SECRET,
+  });
+  return new PlanningCenterClient(config);
+}
 
 program
   .command('health')
@@ -37,8 +49,390 @@ program
     }, null, 2));
   });
 
+// Service Types commands
+const serviceTypes = program.command('service-types').description('Manage Planning Center service types');
+
+serviceTypes
+  .command('list')
+  .description('List all service types')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (options) => {
+    const client = getClient();
+    const result = await client.listServiceTypes({
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Songs commands
+const songs = program.command('songs').description('Search and manage songs');
+
+songs
+  .command('search')
+  .description('Search for songs by title')
+  .argument('<query>', 'Search query')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (query, options) => {
+    const client = getClient();
+    const result = await client.searchSongs(query, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// People commands
+const people = program.command('people').description('Search and manage people');
+
+people
+  .command('search')
+  .description('Search for people by name')
+  .argument('<query>', 'Search query')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (query, options) => {
+    const client = getClient();
+    const result = await client.searchPeople(query, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Teams commands
+const teams = program.command('teams').description('Manage service type teams and positions');
+
+teams
+  .command('list')
+  .description('List teams for a service type')
+  .argument('<service-type-id>', 'Service type ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, options) => {
+    const client = getClient();
+    const result = await client.listTeams(serviceTypeId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+teams
+  .command('positions')
+  .description('List positions for a team')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<team-id>', 'Team ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, teamId, options) => {
+    const client = getClient();
+    const result = await client.listTeamPositions(serviceTypeId, teamId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Plans commands
+const plans = program.command('plans').description('Manage service plans');
+
+plans
+  .command('list')
+  .description('List plans for a service type')
+  .argument('<service-type-id>', 'Service type ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .option('--filter <filter>', 'Filter plans (e.g., "future", "past")')
+  .option('--order <order>', 'Order plans (e.g., "sort_date")')
+  .action(async (serviceTypeId, options) => {
+    const client = getClient();
+    const result = await client.listPlans(serviceTypeId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+      filter: options.filter,
+      order: options.order,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+plans
+  .command('get')
+  .description('Get a specific plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .action(async (serviceTypeId, planId) => {
+    const client = getClient();
+    const result = await client.getPlan(serviceTypeId, planId);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+plans
+  .command('create')
+  .description('Create a new plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .option('--title <title>', 'Plan title')
+  .option('--series-title <title>', 'Series title')
+  .option('--public', 'Make the plan public', false)
+  .option('--starts-at <datetime>', 'Service start time (ISO 8601)')
+  .option('--ends-at <datetime>', 'Service end time (ISO 8601)')
+  .option('--time-type <type>', 'Time type (service, rehearsal, other)', 'service')
+  .action(async (serviceTypeId, options) => {
+    const client = getClient();
+    const planResult = await client.createPlan(serviceTypeId, {
+      title: options.title,
+      series_title: options.seriesTitle,
+      public: options.public,
+    });
+
+    const planData = Array.isArray(planResult.data) ? planResult.data[0] : planResult.data;
+    if (!planData) {
+      throw new Error('Failed to create plan');
+    }
+
+    if (options.startsAt) {
+      await client.createPlanTime(serviceTypeId, planData.id, {
+        starts_at: options.startsAt,
+        ends_at: options.endsAt,
+        time_type: options.timeType,
+      });
+    }
+
+    const finalResult = await client.getPlan(serviceTypeId, planData.id);
+    console.log(JSON.stringify(finalResult, null, 2));
+  });
+
+// Plan items commands
+const planItems = program.command('plan-items').description('Manage plan items (songs)');
+
+planItems
+  .command('list')
+  .description('List items for a plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, planId, options) => {
+    const client = getClient();
+    const result = await client.listPlanItems(serviceTypeId, planId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+planItems
+  .command('add-song')
+  .description('Add a song to a plan (by ID or search)')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .option('--song-id <id>', 'Song ID')
+  .option('--title <title>', 'Song title to search for (must match exactly one song)')
+  .option('--arrangement-id <id>', 'Arrangement ID')
+  .option('--key-id <id>', 'Key ID')
+  .option('--sequence <number>', 'Item sequence number')
+  .option('--service-position <position>', 'Service position')
+  .action(async (serviceTypeId, planId, options) => {
+    const client = getClient();
+    let songId = options.songId;
+
+    if (!songId && options.title) {
+      const searchResult = await client.searchSongs(options.title);
+      const songs = Array.isArray(searchResult.data) ? searchResult.data : [searchResult.data];
+      
+      if (songs.length === 0) {
+        throw new Error(`No songs found matching "${options.title}"`);
+      }
+      if (songs.length > 1) {
+        throw new Error(`Multiple songs found matching "${options.title}". Use --song-id to specify exactly which song.`);
+      }
+      
+      songId = songs[0]?.id;
+    }
+
+    if (!songId) {
+      throw new Error('Either --song-id or --title must be provided');
+    }
+
+    const itemAttributes: {
+      song_id?: string;
+      arrangement_id?: string;
+      key_id?: string;
+      sequence?: number;
+      service_position?: string;
+    } = {
+      song_id: songId,
+      arrangement_id: options.arrangementId,
+      key_id: options.keyId,
+      service_position: options.servicePosition,
+    };
+
+    if (options.sequence) {
+      itemAttributes.sequence = parseInt(options.sequence);
+    }
+
+    const result = await client.createPlanItem(serviceTypeId, planId, itemAttributes);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Plan team members commands
+const planTeamMembers = program.command('plan-team-members').description('Manage plan team member assignments');
+
+planTeamMembers
+  .command('list')
+  .description('List team members assigned to a plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .option('--per-page <number>', 'Number of results per page', '25')
+  .option('--offset <number>', 'Number of results to skip', '0')
+  .action(async (serviceTypeId, planId, options) => {
+    const client = getClient();
+    const result = await client.listPlanTeamMembers(serviceTypeId, planId, {
+      per_page: parseInt(options.perPage),
+      offset: parseInt(options.offset),
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+planTeamMembers
+  .command('assign')
+  .description('Assign a person to a plan')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .argument('<person-id>', 'Person ID')
+  .argument('<team-id>', 'Team ID')
+  .option('--position <name>', 'Team position name')
+  .option('--prepare-notification', 'Send prepare notification', false)
+  .action(async (serviceTypeId, planId, personId, teamId, options) => {
+    const client = getClient();
+    const result = await client.createPlanTeamMember(serviceTypeId, planId, {
+      person_id: personId,
+      team_id: teamId,
+      team_position_name: options.position,
+      prepare_notification: options.prepareNotification,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Plan reminders command
+const planReminders = program.command('plan-reminders').description('Manage plan reminder settings');
+
+planReminders
+  .command('set')
+  .description('Set team reminders for a plan time')
+  .argument('<service-type-id>', 'Service type ID')
+  .argument('<plan-id>', 'Plan ID')
+  .argument('<plan-time-id>', 'Plan time ID')
+  .option('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
+  .action(async (serviceTypeId, planId, planTimeId, options) => {
+    const client = getClient();
+    const teamReminders = options.teamReminders ? JSON.parse(options.teamReminders) : {};
+    const result = await client.updatePlanTime(serviceTypeId, planId, planTimeId, {
+      team_reminders: teamReminders,
+    });
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Composite workflow command
+program
+  .command('create-worship-plan')
+  .description('Create a worship plan with songs, assignments, and reminders in one command')
+  .argument('<service-type-id>', 'Service type ID')
+  .requiredOption('--title <title>', 'Plan title')
+  .requiredOption('--starts-at <datetime>', 'Service start time (ISO 8601)')
+  .option('--ends-at <datetime>', 'Service end time (ISO 8601)')
+  .option('--series-title <title>', 'Series title')
+  .option('--public', 'Make the plan public', false)
+  .option('--songs <titles...>', 'Song titles to add (space-separated)')
+  .option('--assignments <json>', 'Team member assignments JSON array: [{"person_id":"1","team_id":"2","position":"Leader"}]')
+  .option('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
+  .action(async (serviceTypeId, options) => {
+    const client = getClient();
+    const results: Record<string, unknown> = {};
+
+    const planResult = await client.createPlan(serviceTypeId, {
+      title: options.title,
+      series_title: options.seriesTitle,
+      public: options.public,
+    });
+    const planData = Array.isArray(planResult.data) ? planResult.data[0] : planResult.data;
+    if (!planData) {
+      throw new Error('Failed to create plan');
+    }
+    results.plan = planData;
+
+    const planTimeResult = await client.createPlanTime(serviceTypeId, planData.id, {
+      starts_at: options.startsAt,
+      ends_at: options.endsAt,
+      time_type: 'service',
+    });
+    const planTimeData = Array.isArray(planTimeResult.data) ? planTimeResult.data[0] : planTimeResult.data;
+    if (!planTimeData) {
+      throw new Error('Failed to create plan time');
+    }
+    results.plan_time = planTimeData;
+
+    if (options.songs && options.songs.length > 0) {
+      results.songs = [];
+      for (const title of options.songs) {
+        const searchResult = await client.searchSongs(title);
+        const songs = Array.isArray(searchResult.data) ? searchResult.data : [searchResult.data];
+        
+        if (songs.length === 0) {
+          throw new Error(`No songs found matching "${title}"`);
+        }
+        if (songs.length > 1) {
+          throw new Error(`Multiple songs found matching "${title}". Please provide a more specific title.`);
+        }
+
+        const firstSong = songs[0];
+        if (!firstSong) {
+          throw new Error(`No songs found matching "${title}"`);
+        }
+
+        const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
+          song_id: firstSong.id,
+        });
+        (results.songs as unknown[]).push(itemResult.data);
+      }
+    }
+
+    if (options.assignments) {
+      const assignments = JSON.parse(options.assignments);
+      results.assignments = [];
+      for (const assignment of assignments) {
+        const memberResult = await client.createPlanTeamMember(serviceTypeId, planData.id, {
+          person_id: assignment.person_id,
+          team_id: assignment.team_id,
+          team_position_name: assignment.position,
+          prepare_notification: assignment.prepare_notification ?? false,
+        });
+        (results.assignments as unknown[]).push(memberResult.data);
+      }
+    }
+
+    if (options.teamReminders) {
+      const teamReminders = JSON.parse(options.teamReminders);
+      await client.updatePlanTime(serviceTypeId, planData.id, planTimeData.id, {
+        team_reminders: teamReminders,
+      });
+      results.team_reminders = teamReminders;
+    }
+
+    const planUrl = (planData.links as Record<string, string> | undefined)?.self;
+    results.planning_center_url = planUrl ?? `https://services.planningcenteronline.com/plans/${planData.id}`;
+    
+    console.log(JSON.stringify({ ok: true, ...results }, null, 2));
+  });
+
 program.parseAsync().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(JSON.stringify({ ok: false, error: message }, null, 2));
+  if (typeof error === 'object' && error !== null && 'ok' in error) {
+    console.error(JSON.stringify(error, null, 2));
+  } else {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(JSON.stringify({ ok: false, error: message }, null, 2));
+  }
   process.exitCode = 1;
 });
