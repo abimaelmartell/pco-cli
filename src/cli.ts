@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { PlanningCenterClient, type PcoApiError } from './client.js';
+import { PlanningCenterClient } from './client.js';
 import { loadConfig } from './config.js';
 
 const program = new Command();
