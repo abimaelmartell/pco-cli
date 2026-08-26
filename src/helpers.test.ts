@@ -4,7 +4,9 @@ import {
   notifyStatus,
   parseAssignments,
   parseIntegerOption,
+  parseIsoDateTime,
   parsePlanTimeType,
+  parsePlanTimeWindow,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -18,6 +20,56 @@ describe('parsePlanTimeType', () => {
 
   it('rejects unsupported values', () => {
     expect(() => parsePlanTimeType('soundcheck')).toThrow('--time-type must be one of: service, rehearsal, other');
+  });
+});
+
+describe('parseIsoDateTime', () => {
+  it('accepts ISO 8601 datetimes with a timezone', () => {
+    expect(parseIsoDateTime('2026-08-30T10:00:00Z', '--starts-at').toISOString())
+      .toBe('2026-08-30T10:00:00.000Z');
+    expect(parseIsoDateTime('2026-08-30T10:00:00-05:00', '--starts-at').toISOString())
+      .toBe('2026-08-30T15:00:00.000Z');
+    expect(parseIsoDateTime('2026-08-30T10:00Z', '--starts-at').toISOString())
+      .toBe('2026-08-30T10:00:00.000Z');
+  });
+
+  it('rejects missing timezones, invalid calendars, and non-ISO values', () => {
+    expect(() => parseIsoDateTime('nope', '--starts-at'))
+      .toThrow('--starts-at must be an ISO 8601 datetime with a timezone');
+    expect(() => parseIsoDateTime('2026-08-30T10:00:00', '--starts-at'))
+      .toThrow('--starts-at must be an ISO 8601 datetime with a timezone');
+    expect(() => parseIsoDateTime('2026-02-30T10:00:00Z', '--ends-at'))
+      .toThrow('--ends-at must be a valid ISO 8601 datetime');
+    expect(() => parseIsoDateTime('2026-08-30T24:00:00Z', '--starts-at'))
+      .toThrow('--starts-at must be a valid ISO 8601 datetime');
+  });
+});
+
+describe('parsePlanTimeWindow', () => {
+  it('returns a validated start and optional end', () => {
+    expect(parsePlanTimeWindow({
+      startsAt: '2026-08-30T10:00:00Z',
+      endsAt: '2026-08-30T11:30:00Z',
+    })).toEqual({
+      startsAt: '2026-08-30T10:00:00Z',
+      endsAt: '2026-08-30T11:30:00Z',
+    });
+  });
+
+  it('rejects --ends-at without --starts-at', () => {
+    expect(() => parsePlanTimeWindow({ endsAt: '2026-08-30T11:30:00Z' }))
+      .toThrow('--ends-at requires --starts-at');
+  });
+
+  it('rejects an end time that is not after the start time', () => {
+    expect(() => parsePlanTimeWindow({
+      startsAt: '2026-08-30T11:30:00Z',
+      endsAt: '2026-08-30T10:00:00Z',
+    })).toThrow('--ends-at must be after --starts-at');
+    expect(() => parsePlanTimeWindow({
+      startsAt: '2026-08-30T10:00:00Z',
+      endsAt: '2026-08-30T10:00:00Z',
+    })).toThrow('--ends-at must be after --starts-at');
   });
 });
 

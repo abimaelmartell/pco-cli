@@ -19,11 +19,86 @@ export function asSingleResource(data: PcoJsonApiResponse['data'] | undefined): 
   return Array.isArray(data) ? data[0] : data;
 }
 
+const ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?(Z|[+-]\d{2}:\d{2})$/;
+
 export function parsePlanTimeType(value: string): PlanTimeType {
   if (value === 'service' || value === 'rehearsal' || value === 'other') {
     return value;
   }
   throw new Error('--time-type must be one of: service, rehearsal, other');
+}
+
+export function parseIsoDateTime(value: string, name: string): Date {
+  const match = ISO_DATE_TIME.exec(value);
+  if (!match) {
+    throw new Error(`${name} must be an ISO 8601 datetime with a timezone (for example 2026-08-30T10:00:00Z)`);
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] ?? '0');
+  const offset = match[8];
+
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59) {
+    throw new Error(`${name} must be a valid ISO 8601 datetime`);
+  }
+
+  if (offset && offset !== 'Z') {
+    const offsetHour = Number(offset.slice(1, 3));
+    const offsetMinute = Number(offset.slice(4, 6));
+    if (offsetHour > 14 || offsetMinute > 59 || (offsetHour === 14 && offsetMinute !== 0)) {
+      throw new Error(`${name} must be a valid ISO 8601 datetime`);
+    }
+  }
+
+  const calendar = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  if (
+    calendar.getUTCFullYear() !== year
+    || calendar.getUTCMonth() !== month - 1
+    || calendar.getUTCDate() !== day
+  ) {
+    throw new Error(`${name} must be a valid ISO 8601 datetime`);
+  }
+
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`${name} must be a valid ISO 8601 datetime`);
+  }
+  return new Date(parsed);
+}
+
+export function parsePlanTimeWindow(options: { startsAt: string; endsAt?: string }): {
+  startsAt: string;
+  endsAt?: string;
+};
+export function parsePlanTimeWindow(options: { startsAt?: string; endsAt?: string }): {
+  startsAt?: string;
+  endsAt?: string;
+};
+export function parsePlanTimeWindow(options: { startsAt?: string; endsAt?: string }): {
+  startsAt?: string;
+  endsAt?: string;
+} {
+  if (options.endsAt && !options.startsAt) {
+    throw new Error('--ends-at requires --starts-at');
+  }
+  if (!options.startsAt) {
+    return {};
+  }
+
+  const start = parseIsoDateTime(options.startsAt, '--starts-at');
+  if (!options.endsAt) {
+    return { startsAt: options.startsAt };
+  }
+
+  const end = parseIsoDateTime(options.endsAt, '--ends-at');
+  if (end.getTime() <= start.getTime()) {
+    throw new Error('--ends-at must be after --starts-at');
+  }
+  return { startsAt: options.startsAt, endsAt: options.endsAt };
 }
 
 export function matchUniqueSong(response: PcoJsonApiResponse, title: string): PcoJsonApiResource {

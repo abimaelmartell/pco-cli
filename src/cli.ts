@@ -10,6 +10,7 @@ import {
   parseAssignments,
   parseIntegerOption,
   parsePlanTimeType,
+  parsePlanTimeWindow,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -177,9 +178,7 @@ plans
   .option('--ends-at <datetime>', 'Service end time (ISO 8601)')
   .option('--time-type <type>', 'Time type (service, rehearsal, other)', parsePlanTimeType, 'service')
   .action(async (serviceTypeId, options) => {
-    if (options.endsAt && !options.startsAt) {
-      throw new Error('--ends-at requires --starts-at');
-    }
+    const timeWindow = parsePlanTimeWindow(options);
 
     const client = getClient();
     const planResult = await client.createPlan(serviceTypeId, {
@@ -194,17 +193,17 @@ plans
     }
 
     let planTime;
-    if (options.startsAt) {
+    if (timeWindow.startsAt) {
       const timeAttributes: {
         starts_at: string;
         ends_at?: string;
         time_type: 'service' | 'rehearsal' | 'other';
       } = {
-        starts_at: options.startsAt,
+        starts_at: timeWindow.startsAt,
         time_type: options.timeType,
       };
-      if (options.endsAt) {
-        timeAttributes.ends_at = options.endsAt;
+      if (timeWindow.endsAt) {
+        timeAttributes.ends_at = timeWindow.endsAt;
       }
       try {
         const timeResult = await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
@@ -410,6 +409,7 @@ program
   .option('--assignments <json>', 'Team member assignments JSON array: [{"person_id":"1","team_id":"2","position":"Leader"}]')
   .option('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
   .action(async (serviceTypeId, options) => {
+    const timeWindow = parsePlanTimeWindow(options);
     const client = getClient();
     const assignments = options.assignments ? parseAssignments(options.assignments) : [];
     const teamReminders = options.teamReminders ? parseTeamReminders(options.teamReminders) : undefined;
@@ -437,11 +437,11 @@ program
       time_type: 'service';
       team_reminders?: Record<string, number>;
     } = {
-      starts_at: options.startsAt,
+      starts_at: timeWindow.startsAt,
       time_type: 'service',
     };
-    if (options.endsAt) {
-      planTimeAttributes.ends_at = options.endsAt;
+    if (timeWindow.endsAt) {
+      planTimeAttributes.ends_at = timeWindow.endsAt;
     }
     if (teamReminders) {
       planTimeAttributes.team_reminders = teamReminders;

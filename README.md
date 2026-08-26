@@ -92,6 +92,8 @@ pco plans create <service-type-id> \
   --starts-at "2026-08-30T10:00:00Z" \
   --ends-at "2026-08-30T11:30:00Z"
 
+`--starts-at` and `--ends-at` must be ISO 8601 datetimes with a timezone. `--ends-at` requires `--starts-at` and must be later than the start time.
+
 # List times on a plan
 pco plan-times list <service-type-id> <plan-id>
 ```
