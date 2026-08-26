@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { request } from 'undici';
 import { PlanningCenterApiError, PlanningCenterClient } from './client.js';
+import { loadConfig } from './config.js';
 import type { PcoConfig } from './config.js';
 
 vi.mock('undici', () => ({
@@ -71,6 +72,30 @@ describe('PlanningCenterClient', () => {
       }),
       body: JSON.stringify({ data: { attributes: { first_name: 'Ada' } } }),
     }));
+  });
+
+  it('sends basic auth when PCO_CLIENT_ID and PCO_SECRET are loaded from the environment', async () => {
+    requestMock.mockResolvedValueOnce({
+      statusCode: 200,
+      body: { text: async () => JSON.stringify({ data: [] }) },
+    } as Awaited<ReturnType<typeof request>>);
+
+    const client = new PlanningCenterClient(loadConfig({
+      ...baseConfig,
+      PCO_CLIENT_ID: 'client-id',
+      PCO_SECRET: 'secret',
+    }));
+
+    await client.requestJson({ path: '/services/v2/service_types' });
+
+    expect(requestMock).toHaveBeenCalledWith(
+      new URL('https://api.example.test/services/v2/service_types'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: `Basic ${Buffer.from('client-id:secret').toString('base64')}`,
+        }),
+      }),
+    );
   });
 
   it('throws structured errors for failed API responses', async () => {

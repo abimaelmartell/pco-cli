@@ -26,7 +26,7 @@ Keep endpoint commands small and composable. Current Services worship-planning s
 ## Conventions
 
 - Prefer JSON output by default for API-facing commands.
-- Do not hard-code Planning Center credentials; read them from environment variables or explicit CLI flags.
+- Do not hard-code Planning Center credentials; read them from environment variables (`PCO_CLIENT_ID` / `PCO_SECRET`, with `PCO_APP_ID` as an alias) or explicit CLI flags (`--client-id`, `--app-id`, `--secret`, `--access-token`).
 - Keep reusable API logic in `src/client.ts`; keep CLI wiring in `src/cli.ts`; keep argument mapping helpers in `src/helpers.ts`.
 - Match Planning Center JSON:API filters (`where[title]`, `where[search_name]`) and documented routes.
 - The Services API cannot send Accept/Decline scheduling emails. Use `team_reminders` and `notify-status`; return `attributes.planning_center_url`.
