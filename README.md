@@ -46,6 +46,26 @@ You can also pass credentials via CLI flags: `--access-token`, `--client-id` (al
 
 Bearer `PCO_ACCESS_TOKEN` / `--access-token` wins over basic auth when both are present.
 
+## Agent skill
+
+A portable [Agent Skill](https://agentskills.io) lives at `.agents/skills/pco-cli/SKILL.md`. Cursor, Claude Code, Codex, and other compatible agents load it from that path automatically in this repo.
+
+To use the CLI from another project or globally:
+
+```bash
+mkdir -p ~/.agents/skills/pco-cli
+curl -fsSL https://raw.githubusercontent.com/abimaelmartell/pco-cli/main/.agents/skills/pco-cli/SKILL.md \
+  -o ~/.agents/skills/pco-cli/SKILL.md
+```
+
+Project copy (Cursor also reads `.cursor/skills/`):
+
+```bash
+mkdir -p .agents/skills/pco-cli
+curl -fsSL https://raw.githubusercontent.com/abimaelmartell/pco-cli/main/.agents/skills/pco-cli/SKILL.md \
+  -o .agents/skills/pco-cli/SKILL.md
+```
+
 ## Usage
 
 The CLI prints JSON so automation agents can parse output reliably.

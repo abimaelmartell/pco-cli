@@ -2,6 +2,8 @@
 
 This repository is a TypeScript CLI intended to be published to npm and used by automation agents.
 
+Agents **calling** the published CLI (worship planning, song search, assignments) should follow `.agents/skills/pco-cli/SKILL.md`. This file is for **changing** the CLI source.
+
 ## Commands
 
 - Install dependencies with `npm install`.
