@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { PlanningCenterApiError, PlanningCenterClient } from './client.js';
+import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
 import { loadConfig } from './config.js';
 import {
   asSingleResource,
@@ -191,6 +191,10 @@ plans
   .option('--ends-at <datetime>', 'Service end time (ISO 8601)')
   .option('--time-type <type>', 'Time type (service, rehearsal, other)', parsePlanTimeType, 'service')
   .action(async (serviceTypeId, options) => {
+    if (options.endsAt && !options.startsAt) {
+      throw new Error('--ends-at requires --starts-at');
+    }
+
     const client = getClient();
     const planResult = await client.createPlan(serviceTypeId, {
       title: options.title,
@@ -215,7 +219,18 @@ plans
       if (options.endsAt) {
         timeAttributes.ends_at = options.endsAt;
       }
-      await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
+      try {
+        await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
+      } catch (error: unknown) {
+        throw new PartialWorkflowError(
+          error instanceof Error ? error.message : 'Failed to create plan time',
+          {
+            plan: planData,
+            planning_center_url: planningCenterUrl(planData),
+            cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
+          },
+        );
+      }
     }
 
     const finalResult = await client.getPlan(serviceTypeId, planData.id);
@@ -260,7 +275,7 @@ planItems
     let songId = options.songId;
 
     if (!songId && options.title) {
-      const searchResult = await client.searchSongs(options.title);
+      const searchResult = await client.searchAllSongs(options.title);
       songId = matchUniqueSong(searchResult, options.title).id;
     }
 
@@ -396,7 +411,7 @@ program
     const resolvedSongs = [];
 
     for (const title of songTitles) {
-      const searchResult = await client.searchSongs(title);
+      const searchResult = await client.searchAllSongs(title);
       resolvedSongs.push({ title, song: matchUniqueSong(searchResult, title) });
     }
 
@@ -426,57 +441,83 @@ program
       planTimeAttributes.team_reminders = teamReminders;
     }
 
-    const planTimeResult = await client.createPlanTime(serviceTypeId, planData.id, planTimeAttributes);
+    const planTimeResult = await client.createPlanTime(serviceTypeId, planData.id, planTimeAttributes).catch((error: unknown) => {
+      throw new PartialWorkflowError(
+        error instanceof Error ? error.message : 'Failed to create plan time',
+        {
+          plan: planData,
+          planning_center_url: planningCenterUrl(planData),
+          cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
+        },
+      );
+    });
     const planTimeData = asSingleResource(planTimeResult.data);
     if (!planTimeData) {
-      throw new Error('Failed to create plan time');
+      throw new PartialWorkflowError('Failed to create plan time', {
+        plan: planData,
+        planning_center_url: planningCenterUrl(planData),
+      });
     }
 
     const songItems = [];
-    for (const { song } of resolvedSongs) {
-      const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
-        song_id: song.id,
-      });
-      songItems.push(itemResult.data);
-    }
-
-    const assignmentResults = [];
-    for (const assignment of assignments) {
-      const memberAttributes: {
-        person_id: string;
-        team_id: string;
-        team_position_name?: string;
-        prepare_notification?: boolean;
-      } = {
-        person_id: assignment.person_id,
-        team_id: assignment.team_id,
-      };
-      if (assignment.position) {
-        memberAttributes.team_position_name = assignment.position;
+    try {
+      for (const { song } of resolvedSongs) {
+        const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
+          song_id: song.id,
+        });
+        songItems.push(itemResult.data);
       }
-      if (assignment.prepare_notification !== undefined) {
-        memberAttributes.prepare_notification = assignment.prepare_notification;
+
+      const assignmentResults = [];
+      for (const assignment of assignments) {
+        const memberAttributes: {
+          person_id: string;
+          team_id: string;
+          team_position_name?: string;
+          prepare_notification?: boolean;
+        } = {
+          person_id: assignment.person_id,
+          team_id: assignment.team_id,
+        };
+        if (assignment.position) {
+          memberAttributes.team_position_name = assignment.position;
+        }
+        if (assignment.prepare_notification !== undefined) {
+          memberAttributes.prepare_notification = assignment.prepare_notification;
+        }
+        const memberResult = await client.createPlanTeamMember(serviceTypeId, planData.id, memberAttributes);
+        assignmentResults.push(memberResult.data);
       }
-      const memberResult = await client.createPlanTeamMember(serviceTypeId, planData.id, memberAttributes);
-      assignmentResults.push(memberResult.data);
+
+      const finalPlan = await client.getPlan(serviceTypeId, planData.id);
+      const plan = asSingleResource(finalPlan.data) ?? planData;
+
+      console.log(JSON.stringify({
+        ok: true,
+        plan,
+        plan_time: planTimeData,
+        songs: songItems,
+        assignments: assignmentResults,
+        ...(teamReminders ? { team_reminders: teamReminders } : {}),
+        planning_center_url: planningCenterUrl(plan),
+      }, null, 2));
+    } catch (error: unknown) {
+      if (error instanceof PartialWorkflowError) throw error;
+      throw new PartialWorkflowError(
+        error instanceof Error ? error.message : 'Failed after creating the plan',
+        {
+          plan: planData,
+          plan_time: planTimeData,
+          songs: songItems,
+          planning_center_url: planningCenterUrl(planData),
+          cause: error instanceof PlanningCenterApiError ? error.toJSON() : String(error),
+        },
+      );
     }
-
-    const finalPlan = await client.getPlan(serviceTypeId, planData.id);
-    const plan = asSingleResource(finalPlan.data) ?? planData;
-
-    console.log(JSON.stringify({
-      ok: true,
-      plan,
-      plan_time: planTimeData,
-      songs: songItems,
-      assignments: assignmentResults,
-      ...(teamReminders ? { team_reminders: teamReminders } : {}),
-      planning_center_url: planningCenterUrl(plan),
-    }, null, 2));
   });
 
 program.parseAsync().catch((error: unknown) => {
-  if (error instanceof PlanningCenterApiError) {
+  if (error instanceof PlanningCenterApiError || error instanceof PartialWorkflowError) {
     console.error(JSON.stringify(error.toJSON(), null, 2));
   } else {
     const message = error instanceof Error ? error.message : String(error);

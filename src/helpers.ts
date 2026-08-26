@@ -87,6 +87,16 @@ export function parseAssignments(raw: string): PlanAssignmentInput[] {
     if (typeof record.person_id !== 'string' || typeof record.team_id !== 'string') {
       throw new Error(`--assignments[${index}] requires person_id and team_id strings`);
     }
+    if ('position' in record && record.position !== undefined && typeof record.position !== 'string') {
+      throw new Error(`--assignments[${index}].position must be a string`);
+    }
+    if (
+      'prepare_notification' in record
+      && record.prepare_notification !== undefined
+      && typeof record.prepare_notification !== 'boolean'
+    ) {
+      throw new Error(`--assignments[${index}].prepare_notification must be a boolean`);
+    }
     return {
       person_id: record.person_id,
       team_id: record.team_id,

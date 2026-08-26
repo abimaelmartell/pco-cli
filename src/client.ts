@@ -37,6 +37,21 @@ export class PlanningCenterApiError extends Error implements PcoApiError {
   }
 }
 
+export class PartialWorkflowError extends Error {
+  readonly ok = false as const;
+  readonly partial: Record<string, unknown>;
+
+  constructor(message: string, partial: Record<string, unknown>) {
+    super(message);
+    this.name = 'PartialWorkflowError';
+    this.partial = partial;
+  }
+
+  toJSON(): { ok: false; error: string; partial: Record<string, unknown> } {
+    return { ok: false, error: this.message, partial: this.partial };
+  }
+}
+
 export type PcoJsonApiResource = {
   id: string;
   type: string;
@@ -62,12 +77,44 @@ export class PlanningCenterClient {
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
 
+    return this.requestAtUrl<T>(url, options.method ?? 'GET', options.body);
+  }
+
+  async collectCollection(
+    path: string,
+    query?: Record<string, string | number | boolean | undefined>,
+  ): Promise<PcoJsonApiResponse> {
+    const data: PcoJsonApiResource[] = [];
+    let page = await this.requestJson<PcoJsonApiResponse>({ path, query: query ?? {} });
+    const apiOrigin = new URL(this.config.PCO_BASE_URL).origin;
+
+    for (let pageCount = 0; pageCount < 100; pageCount += 1) {
+      if (Array.isArray(page.data)) {
+        data.push(...page.data);
+      } else if (page.data) {
+        data.push(page.data);
+      }
+
+      const next = page.links?.next;
+      if (!next) break;
+
+      const nextUrl = new URL(next, this.config.PCO_BASE_URL);
+      if (nextUrl.origin !== apiOrigin) {
+        throw new Error('Refusing to follow pagination link off the Planning Center API host');
+      }
+      page = await this.requestAtUrl<PcoJsonApiResponse>(nextUrl, 'GET');
+    }
+
+    return { data };
+  }
+
+  private async requestAtUrl<T>(url: URL, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       Accept: 'application/json',
       'User-Agent': this.config.PCO_USER_AGENT,
     };
 
-    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
 
     if (this.config.PCO_ACCESS_TOKEN) {
       headers.Authorization = `Bearer ${this.config.PCO_ACCESS_TOKEN}`;
@@ -77,9 +124,9 @@ export class PlanningCenterClient {
     }
 
     const requestOptions = {
-      method: options.method ?? 'GET',
+      method,
       headers,
-      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     };
 
     const response = await request(url, requestOptions);
@@ -120,6 +167,13 @@ export class PlanningCenterClient {
     return this.requestJson({
       path: '/services/v2/songs',
       query: { 'where[title]': searchQuery, ...(query ?? {}) },
+    });
+  }
+
+  async searchAllSongs(searchQuery: string): Promise<PcoJsonApiResponse> {
+    return this.collectCollection('/services/v2/songs', {
+      'where[title]': searchQuery,
+      per_page: 100,
     });
   }
 

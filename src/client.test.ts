@@ -139,6 +139,36 @@ describe('PlanningCenterClient', () => {
       expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
     });
 
+    it('follows pagination links when collecting every song match', async () => {
+      requestMock
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          body: {
+            text: async () => JSON.stringify({
+              data: [{ id: '1', type: 'Song', attributes: { title: 'Holy' } }],
+              links: { next: 'https://api.example.test/services/v2/songs?offset=100' },
+            }),
+          },
+        } as Awaited<ReturnType<typeof request>>)
+        .mockResolvedValueOnce({
+          statusCode: 200,
+          body: {
+            text: async () => JSON.stringify({
+              data: [{ id: '2', type: 'Song', attributes: { title: 'Holy' } }],
+            }),
+          },
+        } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      const result = await client.searchAllSongs('Holy');
+
+      expect(result.data).toEqual([
+        { id: '1', type: 'Song', attributes: { title: 'Holy' } },
+        { id: '2', type: 'Song', attributes: { title: 'Holy' } },
+      ]);
+      expect(requestMock).toHaveBeenCalledTimes(2);
+    });
+
     it('searches people by search_name', async () => {
       requestMock.mockResolvedValueOnce({
         statusCode: 200,
@@ -296,6 +326,23 @@ describe('PlanningCenterClient', () => {
         new URL('https://api.example.test/services/v2/service_types/1/teams'),
         expect.any(Object)
       );
+    });
+
+    it('lists plans with filter, order, and pagination', async () => {
+      requestMock.mockResolvedValueOnce({
+        statusCode: 200,
+        body: { text: async () => JSON.stringify({ data: [{ id: '77', type: 'Plan' }] }) },
+      } as Awaited<ReturnType<typeof request>>);
+
+      const client = new PlanningCenterClient(baseConfig);
+      await client.listPlans('1', { per_page: 10, offset: 0, filter: 'future', order: 'sort_date' });
+
+      const expectedUrl = new URL('https://api.example.test/services/v2/service_types/1/plans');
+      expectedUrl.searchParams.set('per_page', '10');
+      expectedUrl.searchParams.set('offset', '0');
+      expectedUrl.searchParams.set('filter', 'future');
+      expectedUrl.searchParams.set('order', 'sort_date');
+      expect(requestMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object));
     });
 
     it('lists team positions from the team nested route', async () => {

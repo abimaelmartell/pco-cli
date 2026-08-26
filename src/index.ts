@@ -1,4 +1,4 @@
-export { PlanningCenterClient, PlanningCenterApiError } from './client.js';
+export { PlanningCenterClient, PlanningCenterApiError, PartialWorkflowError } from './client.js';
 export type { 
   PcoRequestOptions, 
   PcoApiError, 

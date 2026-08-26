@@ -80,6 +80,13 @@ describe('parseAssignments', () => {
   it('rejects a non-array payload', () => {
     expect(() => parseAssignments('{"person_id":"1"}')).toThrow('--assignments must be a JSON array');
   });
+
+  it('rejects present assignment fields with the wrong type', () => {
+    expect(() => parseAssignments('[{"person_id":"1","team_id":"2","prepare_notification":"false"}]'))
+      .toThrow('--assignments[0].prepare_notification must be a boolean');
+    expect(() => parseAssignments('[{"person_id":"1","team_id":"2","position":1}]'))
+      .toThrow('--assignments[0].position must be a string');
+  });
 });
 
 describe('notifyStatus', () => {

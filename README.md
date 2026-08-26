@@ -104,7 +104,7 @@ pco plan-items list <service-type-id> <plan-id>
 # Add a song by ID
 pco plan-items add-song <service-type-id> <plan-id> --song-id <song-id>
 
-# Add a song by title (must match exactly one song)
+# Add a song by title (must match exactly one song across every search page)
 pco plan-items add-song <service-type-id> <plan-id> --title "Amazing Grace"
 
 # Add with arrangement and key
@@ -171,7 +171,7 @@ This command:
 
 ### Scheduling Email ("Accept/Decline") Not Supported
 
-Planning Center's "Send scheduling email" button (the one that sends Accept/Decline links to team members) is **NOT available via the API**. This was confirmed by Planning Center in [planningcenteronline/developers#1475](https://github.com/planningcenteronline/developers/discussions/1475).
+Planning Center's "Send scheduling email" button (the one that sends Accept/Decline links to team members) is **NOT available via the API**. This was confirmed by Planning Center in [planningcenter/developers#1475](https://github.com/planningcenter/developers/issues/1475).
 
 **Workarounds:**
 
