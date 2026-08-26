@@ -137,7 +137,7 @@ Set automated reminder emails for teams:
 
 ```bash
 # Set team reminders (days before service)
-pco plan-reminders set <service-type-id> <plan-id> <plan-time-id> \
+pco plan-reminders set <service-type-id> <plan-time-id> \
   --team-reminders '{"<team-id>": 7, "<team-id-2>": 3}'
 ```
 

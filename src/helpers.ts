@@ -1,5 +1,7 @@
 import type { PcoJsonApiResource, PcoJsonApiResponse } from './client.js';
 
+export type PlanTimeType = 'service' | 'rehearsal' | 'other';
+
 export type PlanAssignmentInput = {
   person_id: string;
   team_id: string;
@@ -15,6 +17,13 @@ export function asResourceList(data: PcoJsonApiResponse['data'] | undefined): Pc
 export function asSingleResource(data: PcoJsonApiResponse['data'] | undefined): PcoJsonApiResource | undefined {
   if (!data) return undefined;
   return Array.isArray(data) ? data[0] : data;
+}
+
+export function parsePlanTimeType(value: string): PlanTimeType {
+  if (value === 'service' || value === 'rehearsal' || value === 'other') {
+    return value;
+  }
+  throw new Error('--time-type must be one of: service, rehearsal, other');
 }
 
 export function matchUniqueSong(response: PcoJsonApiResponse, title: string): PcoJsonApiResource {

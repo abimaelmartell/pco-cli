@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { request } from 'undici';
-import { PlanningCenterClient } from './client.js';
+import { PlanningCenterApiError, PlanningCenterClient } from './client.js';
 import type { PcoConfig } from './config.js';
 
 vi.mock('undici', () => ({
@@ -80,12 +80,30 @@ describe('PlanningCenterClient', () => {
     } as Awaited<ReturnType<typeof request>>);
 
     const client = new PlanningCenterClient(baseConfig);
+    const error = await client.requestJson({ path: '/missing' }).catch((caught: unknown) => caught);
 
-    await expect(client.requestJson({ path: '/missing' })).rejects.toMatchObject({
+    expect(error).toBeInstanceOf(PlanningCenterApiError);
+    expect(error).toMatchObject({
       ok: false,
       status: 404,
       message: 'Resource not found',
       errors: [{ detail: 'Resource not found', title: 'Not Found' }],
+    });
+  });
+
+  it('keeps HTTP status when an error body is not JSON', async () => {
+    requestMock.mockResolvedValueOnce({
+      statusCode: 502,
+      body: { text: async () => '<html>bad gateway</html>' },
+    } as Awaited<ReturnType<typeof request>>);
+
+    const client = new PlanningCenterClient(baseConfig);
+
+    await expect(client.requestJson({ path: '/oops' })).rejects.toMatchObject({
+      name: 'PlanningCenterApiError',
+      ok: false,
+      status: 502,
+      message: 'Planning Center API request failed with 502',
     });
   });
 

@@ -3,9 +3,22 @@ import {
   matchUniqueSong,
   notifyStatus,
   parseAssignments,
+  parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
+
+describe('parsePlanTimeType', () => {
+  it('accepts documented PlanTime values', () => {
+    expect(parsePlanTimeType('service')).toBe('service');
+    expect(parsePlanTimeType('rehearsal')).toBe('rehearsal');
+    expect(parsePlanTimeType('other')).toBe('other');
+  });
+
+  it('rejects unsupported values', () => {
+    expect(() => parsePlanTimeType('soundcheck')).toThrow('--time-type must be one of: service, rehearsal, other');
+  });
+});
 
 describe('matchUniqueSong', () => {
   it('returns the exact title match', () => {

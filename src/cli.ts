@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { PlanningCenterClient } from './client.js';
+import { PlanningCenterApiError, PlanningCenterClient } from './client.js';
 import { loadConfig } from './config.js';
 import {
   asSingleResource,
   matchUniqueSong,
   notifyStatus,
   parseAssignments,
+  parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';
@@ -188,7 +189,7 @@ plans
   .option('--public', 'Make the plan public', false)
   .option('--starts-at <datetime>', 'Service start time (ISO 8601)')
   .option('--ends-at <datetime>', 'Service end time (ISO 8601)')
-  .option('--time-type <type>', 'Time type (service, rehearsal, other)', 'service')
+  .option('--time-type <type>', 'Time type (service, rehearsal, other)', parsePlanTimeType, 'service')
   .action(async (serviceTypeId, options) => {
     const client = getClient();
     const planResult = await client.createPlan(serviceTypeId, {
@@ -206,15 +207,13 @@ plans
       const timeAttributes: {
         starts_at: string;
         ends_at?: string;
-        time_type?: 'service' | 'rehearsal' | 'other';
+        time_type: 'service' | 'rehearsal' | 'other';
       } = {
         starts_at: options.startsAt,
+        time_type: options.timeType,
       };
       if (options.endsAt) {
         timeAttributes.ends_at = options.endsAt;
-      }
-      if (options.timeType === 'service' || options.timeType === 'rehearsal' || options.timeType === 'other') {
-        timeAttributes.time_type = options.timeType;
       }
       await client.createPlanTime(serviceTypeId, planData.id, timeAttributes);
     }
@@ -337,15 +336,25 @@ planTeamMembers
   .argument('<person-id>', 'Person ID')
   .argument('<team-id>', 'Team ID')
   .option('--position <name>', 'Team position name')
-  .option('--prepare-notification', 'Send prepare notification', false)
+  .option('--prepare-notification', 'Set prepare_notification=true (omit to keep the team default)')
   .action(async (serviceTypeId, planId, personId, teamId, options) => {
     const client = getClient();
-    const result = await client.createPlanTeamMember(serviceTypeId, planId, {
+    const attributes: {
+      person_id: string;
+      team_id: string;
+      team_position_name?: string;
+      prepare_notification?: boolean;
+    } = {
       person_id: personId,
       team_id: teamId,
-      team_position_name: options.position,
-      prepare_notification: options.prepareNotification,
-    });
+    };
+    if (options.position) {
+      attributes.team_position_name = options.position;
+    }
+    if (options.prepareNotification === true) {
+      attributes.prepare_notification = true;
+    }
+    const result = await client.createPlanTeamMember(serviceTypeId, planId, attributes);
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -356,10 +365,9 @@ planReminders
   .command('set')
   .description('Set team reminders for a plan time')
   .argument('<service-type-id>', 'Service type ID')
-  .argument('<plan-id>', 'Plan ID')
   .argument('<plan-time-id>', 'Plan time ID')
   .requiredOption('--team-reminders <json>', 'Team reminders JSON (e.g., \'{"team_id": 7}\')')
-  .action(async (serviceTypeId, _planId, planTimeId, options) => {
+  .action(async (serviceTypeId, planTimeId, options) => {
     const client = getClient();
     const result = await client.updatePlanTime(serviceTypeId, planTimeId, {
       team_reminders: parseTeamReminders(options.teamReminders),
@@ -468,8 +476,8 @@ program
   });
 
 program.parseAsync().catch((error: unknown) => {
-  if (typeof error === 'object' && error !== null && 'ok' in error) {
-    console.error(JSON.stringify(error, null, 2));
+  if (error instanceof PlanningCenterApiError) {
+    console.error(JSON.stringify(error.toJSON(), null, 2));
   } else {
     const message = error instanceof Error ? error.message : String(error);
     console.error(JSON.stringify({ ok: false, error: message }, null, 2));

@@ -1,4 +1,4 @@
-export { PlanningCenterClient } from './client.js';
+export { PlanningCenterClient, PlanningCenterApiError } from './client.js';
 export type { 
   PcoRequestOptions, 
   PcoApiError, 
@@ -9,6 +9,7 @@ export {
   matchUniqueSong,
   notifyStatus,
   parseAssignments,
+  parsePlanTimeType,
   parseTeamReminders,
   planningCenterUrl,
 } from './helpers.js';

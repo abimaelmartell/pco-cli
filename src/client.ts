@@ -15,6 +15,28 @@ export type PcoApiError = {
   message: string;
 };
 
+export class PlanningCenterApiError extends Error implements PcoApiError {
+  readonly ok = false as const;
+  readonly status: number;
+  readonly errors?: Array<{ detail?: string; title?: string }>;
+
+  constructor(options: { status: number; message: string; errors?: Array<{ detail?: string; title?: string }> }) {
+    super(options.message);
+    this.name = 'PlanningCenterApiError';
+    this.status = options.status;
+    if (options.errors) this.errors = options.errors;
+  }
+
+  toJSON(): PcoApiError {
+    return {
+      ok: false,
+      status: this.status,
+      message: this.message,
+      ...(this.errors ? { errors: this.errors } : {}),
+    };
+  }
+}
+
 export type PcoJsonApiResource = {
   id: string;
   type: string;
@@ -63,16 +85,26 @@ export class PlanningCenterClient {
     const response = await request(url, requestOptions);
 
     const payload = await response.body.text();
-    const parsed = payload ? JSON.parse(payload) : null;
+    let parsed: unknown = null;
+    if (payload) {
+      try {
+        parsed = JSON.parse(payload);
+      } catch {
+        if (response.statusCode < 400) {
+          throw new Error(`Planning Center API returned non-JSON (${response.statusCode})`);
+        }
+      }
+    }
 
     if (response.statusCode >= 400) {
-      const error: PcoApiError = {
-        ok: false,
+      const errors = Array.isArray((parsed as { errors?: unknown } | null)?.errors)
+        ? (parsed as { errors: Array<{ detail?: string; title?: string }> }).errors
+        : undefined;
+      throw new PlanningCenterApiError({
         status: response.statusCode,
-        errors: parsed?.errors,
-        message: parsed?.errors?.[0]?.detail ?? `Planning Center API request failed with ${response.statusCode}`,
-      };
-      throw error;
+        message: errors?.[0]?.detail ?? `Planning Center API request failed with ${response.statusCode}`,
+        ...(errors ? { errors } : {}),
+      });
     }
 
     return parsed as T;
