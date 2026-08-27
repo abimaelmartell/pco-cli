@@ -280,7 +280,7 @@ Planning Center's "Send scheduling email" button (the one that sends Accept/Decl
 
 Releases are automated with [semantic-release](https://semantic-release.gitbook.io/) and [Conventional Commits](https://www.conventionalcommits.org/). On every push to `main`, `.github/workflows/publish.yml` runs tests and then publishes only when the commits since the last release include a `feat` or `fix` (semver). npm authenticates with [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (GitHub OIDC). There is no `NPM_TOKEN` secret.
 
-Use a Conventional Commit **PR title** and squash-merge. CI rejects titles that do not match. Do not bump `version` in `package.json` or push `v*` tags by hand.
+Use a Conventional Commit **PR title** and squash-merge. CI rejects titles that do not match. Do not bump `version` in `package.json` or push `v*` tags by hand — semantic-release publishes to npm, tags `vX.Y.Z`, and commits the new version back to `package.json` / `package-lock.json`.
 
 | PR title | Semver bump | Example |
 | --- | --- | --- |
@@ -289,7 +289,7 @@ Use a Conventional Commit **PR title** and squash-merge. CI rejects titles that 
 | `feat!: drop Node 18` or a `BREAKING CHANGE:` footer | major (`0.1.2` → `1.0.0`) | breaking change |
 | `docs:`, `chore:`, `ci:`, `test:`, `refactor:` | no publish | docs and tooling |
 
-`perf:` also publishes a patch. A GitHub Release and git tag (`vX.Y.Z`) are created with the npm publish.
+`perf:` also publishes a patch. A GitHub Release and git tag (`vX.Y.Z`) are created with the npm publish. The release commit is `chore(release): X.Y.Z [skip ci]` so it does not start another publish.
 
 The workflow filename must stay `publish.yml` so it matches the trusted publisher on npmjs.com. Do not set `NODE_AUTH_TOKEN` or `NPM_TOKEN` on that job, and do not pass `registry-url` to `actions/setup-node` — both make npm skip OIDC trusted publishing.
 
