@@ -48,7 +48,7 @@ Bearer `PCO_ACCESS_TOKEN` / `--access-token` wins over basic auth when both are 
 
 ## Agent skill
 
-A portable [Agent Skill](https://agentskills.io) lives at `.agents/skills/pco-cli/SKILL.md`. Cursor, Claude Code, Codex, and other compatible agents load it from that path automatically in this repo.
+A portable [Agent Skill](https://agentskills.io) lives at `.agents/skills/pco-cli/SKILL.md`. Cursor, Claude Code, Codex, and other compatible agents load it from that path automatically in this repo. The skill is the source of truth for calling the CLI, including the **songs + keys + musicians** playbook (`plan-items add-song` with `--arrangement-id` and `--key-id`; do not use `create-worship-plan` when keys matter).
 
 To use the CLI from another project or globally:
 
@@ -244,9 +244,11 @@ This command:
 1. Validates assignment JSON and reminder offsets, then looks up each song title in the church library (fails before creating anything if a title is missing or not unique)
 2. Creates a plan with the specified title and series
 3. Adds a service time, including `team_reminders` when provided
-4. Adds the matched songs in order
+4. Adds the matched songs in order (song id only — Planning Center default arrangement/key)
 5. Assigns team members with their positions
 6. Returns `planning_center_url` from the plan resource (the Services web UI URL, not the API `links.self`)
+
+When the setlist includes specific keys, do not use `create-worship-plan`. Follow the **Worship plan with keys and musicians** playbook in `.agents/skills/pco-cli/SKILL.md` (`keys create` if needed, then `plan-items add-song` with `--arrangement-id` and `--key-id`).
 
 ## Important API Limitations
 
