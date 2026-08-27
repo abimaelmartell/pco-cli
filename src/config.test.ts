@@ -9,12 +9,15 @@ import {
   loadConfig,
   loadConfigFromAuthOptions,
 } from './config.js';
+import { packageVersion } from './version.js';
+
+const defaultUserAgent = `pco-cli/${packageVersion()}`;
 
 describe('loadConfig', () => {
   it('applies safe defaults when optional Planning Center settings are absent', () => {
     expect(loadConfig({})).toEqual({
       PCO_BASE_URL: 'https://api.planningcenteronline.com',
-      PCO_USER_AGENT: 'pco-cli/0.1.2',
+      PCO_USER_AGENT: defaultUserAgent,
     });
   });
 
@@ -26,7 +29,7 @@ describe('loadConfig', () => {
       PCO_SECRET: '',
     })).toEqual({
       PCO_BASE_URL: 'https://api.planningcenteronline.com',
-      PCO_USER_AGENT: 'pco-cli/0.1.2',
+      PCO_USER_AGENT: defaultUserAgent,
     });
   });
 
@@ -54,7 +57,7 @@ describe('loadConfig', () => {
       PCO_APP_ID: 'client-id',
       PCO_SECRET: 'secret',
       PCO_BASE_URL: 'https://api.planningcenteronline.com',
-      PCO_USER_AGENT: 'pco-cli/0.1.2',
+      PCO_USER_AGENT: defaultUserAgent,
     });
   });
 

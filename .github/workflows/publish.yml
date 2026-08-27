@@ -2,12 +2,16 @@ name: Publish
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 # Trusted publishing: GitHub OIDC, no NPM_TOKEN.
 # The workflow filename must match the Trusted Publisher config on npmjs.com.
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
 permissions:
   contents: read
   id-token: write
@@ -17,11 +21,15 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      issues: write
+      pull-requests: write
       id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -46,21 +54,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Verify tag matches package.json
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          tag="${GITHUB_REF_NAME#v}"
-          version="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$version" ]; then
-            echo "Tag v${tag} does not match package.json version ${version}" >&2
-            exit 1
-          fi
-
-      - name: Publish
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "npm $(npm --version)"
           if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
             echo "ACTIONS_ID_TOKEN_REQUEST_URL is unset; GitHub OIDC is not available" >&2
             exit 1
           fi
-          npm publish --access public
+          npx semantic-release

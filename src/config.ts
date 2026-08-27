@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
+import { packageVersion } from './version.js';
 
 const optionalNonEmpty = z.preprocess(
   (value) => (value === '' ? undefined : value),
@@ -20,7 +21,7 @@ const envSchema = z.object({
   ),
   PCO_USER_AGENT: z.preprocess(
     (value) => (value === '' ? undefined : value),
-    z.string().min(1).default('pco-cli/0.1.2'),
+    z.string().min(1).default(`pco-cli/${packageVersion()}`),
   ),
 });
 
