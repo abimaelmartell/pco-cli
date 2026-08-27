@@ -20,7 +20,7 @@ const envSchema = z.object({
   ),
   PCO_USER_AGENT: z.preprocess(
     (value) => (value === '' ? undefined : value),
-    z.string().min(1).default('pco-cli/0.1.1'),
+    z.string().min(1).default('pco-cli/0.1.2'),
   ),
 });
 
