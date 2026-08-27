@@ -20,6 +20,7 @@ import {
   parseTagGroupTarget,
   parseTagIds,
   parseTeamReminders,
+  planItemAttributesForSong,
   planningCenterUrl,
 } from './helpers.js';
 
@@ -706,35 +707,39 @@ planItems
   .option('--service-position <position>', 'Service position')
   .action(async (serviceTypeId, planId, options) => {
     const client = getClient();
-    let songId = options.songId;
+    let song;
 
-    if (!songId && options.title) {
+    if (options.songId) {
+      const songResult = await client.getSong(options.songId);
+      song = asSingleResource(songResult.data);
+      if (!song) {
+        throw new Error(`Song ${options.songId} not found`);
+      }
+    } else if (options.title) {
       const searchResult = await client.searchAllSongs(options.title);
-      songId = matchUniqueSong(searchResult, options.title).id;
-    }
-
-    if (!songId) {
+      song = matchUniqueSong(searchResult, options.title);
+    } else {
       throw new Error('Either --song-id or --title must be provided');
     }
 
-    const itemAttributes: {
-      song_id?: string;
+    const extras: {
       arrangement_id?: string;
       key_id?: string;
       sequence?: number;
       service_position?: string;
-    } = {
-      song_id: songId,
-      arrangement_id: options.arrangementId,
-      key_id: options.keyId,
-      service_position: options.servicePosition,
-    };
-
+    } = {};
+    if (options.arrangementId) extras.arrangement_id = options.arrangementId;
+    if (options.keyId) extras.key_id = options.keyId;
+    if (options.servicePosition) extras.service_position = options.servicePosition;
     if (options.sequence) {
-      itemAttributes.sequence = parseIntegerOption(options.sequence, '--sequence', { min: 0 });
+      extras.sequence = parseIntegerOption(options.sequence, '--sequence', { min: 0 });
     }
 
-    const result = await client.createPlanItem(serviceTypeId, planId, itemAttributes);
+    const result = await client.createPlanItem(
+      serviceTypeId,
+      planId,
+      planItemAttributesForSong(song, extras),
+    );
     console.log(JSON.stringify(result, null, 2));
   });
 
@@ -890,9 +895,11 @@ program
     const assignmentResults = [];
     try {
       for (const { song } of resolvedSongs) {
-        const itemResult = await client.createPlanItem(serviceTypeId, planData.id, {
-          song_id: song.id,
-        });
+        const itemResult = await client.createPlanItem(
+          serviceTypeId,
+          planData.id,
+          planItemAttributesForSong(song),
+        );
         songItems.push(itemResult.data);
       }
 

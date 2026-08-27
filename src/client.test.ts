@@ -415,14 +415,22 @@ describe('PlanningCenterClient', () => {
       } as Awaited<ReturnType<typeof request>>);
 
       const client = new PlanningCenterClient(baseConfig);
-      const result = await client.createPlanItem('1', '123', { song_id: '42' });
+      const result = await client.createPlanItem('1', '123', {
+        song_id: '42',
+        title: 'Amazing Grace',
+      });
 
       expect(result.data).toMatchObject({ id: '789', type: 'Item' });
       expect(requestMock).toHaveBeenCalledWith(
         new URL('https://api.example.test/services/v2/service_types/1/plans/123/items'),
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ data: { type: 'Item', attributes: { song_id: '42' } } }),
+          body: JSON.stringify({
+            data: {
+              type: 'Item',
+              attributes: { song_id: '42', title: 'Amazing Grace' },
+            },
+          }),
         })
       );
     });

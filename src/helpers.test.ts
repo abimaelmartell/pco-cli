@@ -15,6 +15,7 @@ import {
   parseTagGroupTarget,
   parseTagIds,
   parseTeamReminders,
+  planItemAttributesForSong,
   planningCenterUrl,
 } from './helpers.js';
 
@@ -201,6 +202,26 @@ describe('matchUniqueSong', () => {
         { id: '2', type: 'Song', attributes: { title: 'Holy' } },
       ],
     }, 'Holy')).toThrow('Multiple songs found matching "Holy"');
+  });
+});
+
+describe('planItemAttributesForSong', () => {
+  it('sets item title from the song resource', () => {
+    expect(planItemAttributesForSong({
+      id: '42',
+      type: 'Song',
+      attributes: { title: 'Amazing Grace' },
+    }, { arrangement_id: '7', key_id: '9' })).toEqual({
+      song_id: '42',
+      title: 'Amazing Grace',
+      arrangement_id: '7',
+      key_id: '9',
+    });
+  });
+
+  it('rejects a song resource without a title', () => {
+    expect(() => planItemAttributesForSong({ id: '42', type: 'Song' }))
+      .toThrow('Song 42 is missing a title');
   });
 });
 

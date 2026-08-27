@@ -195,6 +195,8 @@ pco plan-items add-song <service-type-id> <plan-id> \
   --key-id <key-id>
 ```
 
+Song items always send `title` from the song resource (same as the Planning Center UI) plus `song_id`. Without `title`, Services shows "New Item".
+
 ### Team Member Assignments
 
 Assign people to plans:
@@ -244,7 +246,7 @@ This command:
 1. Validates assignment JSON and reminder offsets, then looks up each song title in the church library (fails before creating anything if a title is missing or not unique)
 2. Creates a plan with the specified title and series
 3. Adds a service time, including `team_reminders` when provided
-4. Adds the matched songs in order (song id only — Planning Center default arrangement/key)
+4. Adds the matched songs in order (`song_id` and `title` — Planning Center default arrangement/key)
 5. Assigns team members with their positions
 6. Returns `planning_center_url` from the plan resource (the Services web UI URL, not the API `links.self`)
 

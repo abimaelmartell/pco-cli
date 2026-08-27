@@ -121,6 +121,37 @@ export function matchUniqueSong(response: PcoJsonApiResponse, title: string): Pc
   return match;
 }
 
+export function songTitle(song: PcoJsonApiResource): string {
+  const title = song.attributes?.title;
+  if (typeof title !== 'string' || title.length === 0) {
+    throw new Error(`Song ${song.id} is missing a title`);
+  }
+  return title;
+}
+
+export function planItemAttributesForSong(
+  song: PcoJsonApiResource,
+  extras: {
+    arrangement_id?: string;
+    key_id?: string;
+    sequence?: number;
+    service_position?: string;
+  } = {},
+): {
+  song_id: string;
+  title: string;
+  arrangement_id?: string;
+  key_id?: string;
+  sequence?: number;
+  service_position?: string;
+} {
+  return {
+    song_id: song.id,
+    title: songTitle(song),
+    ...extras,
+  };
+}
+
 export function planningCenterUrl(resource: PcoJsonApiResource | undefined): string | undefined {
   const fromAttributes = resource?.attributes?.planning_center_url;
   if (typeof fromAttributes === 'string' && fromAttributes.length > 0) {

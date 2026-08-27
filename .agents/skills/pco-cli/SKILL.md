@@ -69,7 +69,7 @@ Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access toke
 1. Run `pco health` first in a session if auth has not been confirmed.
 2. Look up IDs before mutating. Typical order: `service-types list` → `songs search` / `people search` / `teams list` → create or assign. For tags, `tag-groups list --tags-for song --include tags` then `songs assign-tags` (the API **replaces** the full tag set).
 3. Keys belong to an **arrangement**, not the song. After `songs create`, run `arrangements list <song-id>` (often a Default arrangement exists) before `keys list` / `keys create`.
-4. If the user gives **songs with keys** (and usually musicians), do **not** use `create-worship-plan` to add items. That composite only POSTs `song_id` (PCO default arrangement/key). Follow **Worship plan with keys and musicians** below.
+4. If the user gives **songs with keys** (and usually musicians), do **not** use `create-worship-plan` to add items. That composite POSTs `song_id` and `title` (PCO default arrangement/key). Follow **Worship plan with keys and musicians** below.
 5. Use `create-worship-plan` only when songs are titles with **no** required keys and you want fail-closed title resolution before the plan exists.
 6. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false`. Composite commands may include `"partial"` with whatever was created.
 7. `--starts-at` / `--ends-at` must be ISO 8601 **with a timezone** (example `2026-08-30T10:00:00Z`). `--ends-at` requires `--starts-at` and must be later.
@@ -128,7 +128,7 @@ pco create-worship-plan <service-type-id> \
 
 Success JSON includes `plan`, `plan_time`, `songs`, `assignments`, and `planning_center_url` (Services **web UI** URL, not the API `links.self`). Open that URL when the user needs to send Accept/Decline emails by hand.
 
-`--songs` is resolved **before** `plans create`. A missing or ambiguous title fails with no plan created. Added items POST only `song_id` (PCO default arrangement/key). If the user named keys, skip this command and follow the playbook below.
+`--songs` is resolved **before** `plans create`. A missing or ambiguous title fails with no plan created. Added items POST `song_id` and `title` (PCO default arrangement/key). If the user named keys, skip this command and follow the playbook below.
 
 ## Typical flows
 
