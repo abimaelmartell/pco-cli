@@ -27,7 +27,7 @@ Keep endpoint commands small and composable. Current Services worship-planning s
 - `plan-items list` / `add-song`
 - `plan-team-members list` / `notify-status` / `assign`
 - `plan-reminders set`
-- `create-worship-plan` (composite: resolve titles first, then mutate; POSTs `song_id` only — not arrangement/key. Keyed setlists use composable commands; see the skill playbook.)
+- `create-worship-plan` (composite: resolve titles first, then mutate; POSTs `song_id` and `title` — not arrangement/key. Keyed setlists use composable commands; see the skill playbook.)
 
 ## Conventions
 
