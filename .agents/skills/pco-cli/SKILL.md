@@ -62,7 +62,7 @@ Then verify:
 pco health
 ```
 
-Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access token). `"auth": "none"` means credentials were not loaded; stop and fix that before mutating anything.
+Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access token). `"auth": "none"` means credentials were not loaded; stop and fix that before mutating anything. `"version"` is the installed CLI version.
 
 ## Operating rules
 

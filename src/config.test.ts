@@ -6,6 +6,7 @@ import {
   applyEnvFiles,
   authMode,
   globalConfigPath,
+  healthReport,
   loadConfig,
   loadConfigFromAuthOptions,
 } from './config.js';
@@ -171,6 +172,23 @@ describe('authMode', () => {
 
   it('reports none when credentials are missing', () => {
     expect(authMode(loadConfig({}))).toBe('none');
+  });
+});
+
+describe('healthReport', () => {
+  it('includes the package version so agents can confirm the installed CLI', () => {
+    const config = loadConfig({
+      PCO_CLIENT_ID: 'client-id',
+      PCO_SECRET: 'secret',
+    });
+
+    expect(healthReport(config, true)).toEqual({
+      ok: true,
+      version: packageVersion(),
+      baseUrl: 'https://api.planningcenteronline.com',
+      auth: 'basic',
+      clientReady: true,
+    });
   });
 });
 

@@ -100,6 +100,16 @@ export function authMode(config: PcoConfig): AuthMode {
   return 'none';
 }
 
+export function healthReport(config: PcoConfig, clientReady: boolean) {
+  return {
+    ok: true as const,
+    version: packageVersion(),
+    baseUrl: config.PCO_BASE_URL,
+    auth: authMode(config),
+    clientReady,
+  };
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): PcoConfig {
   const parsed = envSchema.parse(env);
   const appId = resolveBasicAuthUsername(parsed.PCO_CLIENT_ID, parsed.PCO_APP_ID);

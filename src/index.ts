@@ -26,6 +26,7 @@ export {
 export {
   authMode,
   globalConfigPath,
+  healthReport,
   loadConfig,
   loadConfigFromAuthOptions,
 } from './config.js';

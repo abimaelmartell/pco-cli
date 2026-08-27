@@ -76,6 +76,8 @@ The CLI prints JSON so automation agents can parse output reliably.
 pco health
 ```
 
+JSON includes `ok`, `version` (from `package.json`), `baseUrl`, `auth` (`basic`, `bearer`, or `none`), and `clientReady`.
+
 ### Service Types
 
 List available service types:

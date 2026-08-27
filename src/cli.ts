@@ -2,7 +2,7 @@
 import { Command } from 'commander';
 import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
 import type { ArrangementAttributes, KeyAttributes } from './client.js';
-import { authMode, loadConfigFromAuthOptions } from './config.js';
+import { healthReport, loadConfigFromAuthOptions } from './config.js';
 import {
   asSingleResource,
   matchUniqueSong,
@@ -51,13 +51,7 @@ program
   .action(() => {
     const config = loadRuntimeConfig();
     const client = new PlanningCenterClient(config);
-
-    console.log(JSON.stringify({
-      ok: true,
-      baseUrl: config.PCO_BASE_URL,
-      auth: authMode(config),
-      clientReady: Boolean(client),
-    }, null, 2));
+    console.log(JSON.stringify(healthReport(config, Boolean(client)), null, 2));
   });
 
 // Service Types commands
