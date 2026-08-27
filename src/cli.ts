@@ -23,13 +23,14 @@ import {
   planItemAttributesForSong,
   planningCenterUrl,
 } from './helpers.js';
+import { packageVersion } from './version.js';
 
 const program = new Command();
 
 program
   .name('pco')
   .description('Agent-friendly CLI for the Planning Center API')
-  .version('0.1.2')
+  .version(packageVersion())
   .option('--base-url <url>', 'Override the Planning Center API base URL')
   .option('--access-token <token>', 'Use a Planning Center bearer access token')
   .option('--client-id <id>', 'Use a Planning Center client id for basic auth')

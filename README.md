@@ -276,34 +276,32 @@ Planning Center's "Send scheduling email" button (the one that sends Accept/Decl
 
 ## Publishing
 
-Releases use [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/) from GitHub Actions. There is no `NPM_TOKEN` secret. The workflow in `.github/workflows/publish.yml` authenticates with a short-lived OIDC token and publishes provenance automatically.
+Releases are automated with [semantic-release](https://semantic-release.gitbook.io/) and [Conventional Commits](https://www.conventionalcommits.org/). On every push to `main`, `.github/workflows/publish.yml` runs tests and then publishes only when the commits since the last release include a `feat` or `fix` (semver). npm authenticates with [trusted publishing](https://docs.npmjs.com/trusted-publishers/) (GitHub OIDC). There is no `NPM_TOKEN` secret.
 
-Merge this workflow to `main` before attaching the trusted publisher. npm matches the workflow filename on the default branch.
+Use a Conventional Commit **PR title** and squash-merge. CI rejects titles that do not match. Do not bump `version` in `package.json` or push `v*` tags by hand.
+
+| PR title | Semver bump | Example |
+| --- | --- | --- |
+| `feat: add song tags` | minor (`0.1.2` → `0.2.0`) | new command or capability |
+| `fix: handle empty search` | patch (`0.1.2` → `0.1.3`) | bug fix |
+| `feat!: drop Node 18` or a `BREAKING CHANGE:` footer | major (`0.1.2` → `1.0.0`) | breaking change |
+| `docs:`, `chore:`, `ci:`, `test:`, `refactor:` | no publish | docs and tooling |
+
+`perf:` also publishes a patch. A GitHub Release and git tag (`vX.Y.Z`) are created with the npm publish.
+
+The workflow filename must stay `publish.yml` so it matches the trusted publisher on npmjs.com. Do not set `NODE_AUTH_TOKEN` or `NPM_TOKEN` on that job, and do not pass `registry-url` to `actions/setup-node` — both make npm skip OIDC trusted publishing.
 
 ### One-time setup on npmjs.com
 
 1. Sign in as the npm user `abimaelmartell` (the scope must match your npm username).
-2. If the package does not exist yet, either:
-   - Attach the trusted publisher below first (when npm offers that for an unpublished name), then push tag `v0.1.0`, or
-   - Publish once from your machine so the package settings page exists:
-
-   ```bash
-   npm login
-   npm run check
-   npm test
-   npm publish --access public
-   ```
-
-   After a local first publish of `0.1.0`, bump the version before using the tag workflow.
-
-3. On [npmjs.com](https://www.npmjs.com/) open **@abimaelmartell/pco-cli → Settings → Trusted Publisher**.
-4. Choose **GitHub Actions** and set:
+2. On [npmjs.com](https://www.npmjs.com/) open **@abimaelmartell/pco-cli → Settings → Trusted Publisher**.
+3. Choose **GitHub Actions** and set:
    - Organization or user: `abimaelmartell`
    - Repository: `pco-cli`
    - Workflow filename: `publish.yml` (filename only, including `.yml`)
    - Environment name: leave blank
    - Allowed actions: `npm publish`
-5. After a successful OIDC publish, optionally set **Publishing access** to require 2FA and disallow tokens.
+4. After a successful OIDC publish, optionally set **Publishing access** to require 2FA and disallow tokens.
 
 You can do the same attach step from a local npm 11.5.1+ CLI:
 
@@ -311,22 +309,11 @@ You can do the same attach step from a local npm 11.5.1+ CLI:
 npm trust github @abimaelmartell/pco-cli --repo abimaelmartell/pco-cli --file publish.yml --allow-publish
 ```
 
-### Later releases
-
-1. Bump `version` in `package.json` (and the lockfile) and merge to `main`.
-2. Tag the merge commit to match that version and push the tag:
-
-   ```bash
-   git tag v0.1.2
-   git push origin v0.1.2
-   ```
-
-The Publish workflow runs `npm ci`, check, test, lint, then `npm publish --access public`. Do not set `NODE_AUTH_TOKEN` or `NPM_TOKEN` on that job, and do not pass `registry-url` to `actions/setup-node` — both make npm skip OIDC trusted publishing.
-
-Local dry run:
+Local dry run (does not publish):
 
 ```bash
 npm run check
 npm run build
 npm pack --dry-run
+npx semantic-release --dry-run
 ```
