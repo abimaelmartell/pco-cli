@@ -32,7 +32,7 @@ pco health
 
 If `pco` is not on `PATH`, run the same commands with `npx --yes @abimaelmartell/pco-cli` in place of `pco`.
 
-`songs create`, `keys create`, and `plan-items add-song --key-id` need a CLI that includes those commands. If `pco keys --help` is unknown, use this repository (`npm run build && npm link`) instead of an older npm release.
+`songs create`, `keys create`, and `plan-items add-song --key-id` need `@abimaelmartell/pco-cli@0.1.2` or later. If `pco keys --help` is unknown, upgrade or use this repository (`npm run build && npm link`).
 
 ### Credentials
 
