@@ -28,7 +28,7 @@ const program = new Command();
 program
   .name('pco')
   .description('Agent-friendly CLI for the Planning Center API')
-  .version('0.1.0')
+  .version('0.1.1')
   .option('--base-url <url>', 'Override the Planning Center API base URL')
   .option('--access-token <token>', 'Use a Planning Center bearer access token')
   .option('--client-id <id>', 'Use a Planning Center client id for basic auth')
