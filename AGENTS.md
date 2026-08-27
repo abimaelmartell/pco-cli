@@ -36,4 +36,4 @@ Keep endpoint commands small and composable. Current Services worship-planning s
 - Keep reusable API logic in `src/client.ts`; keep CLI wiring in `src/cli.ts`; keep argument mapping helpers in `src/helpers.ts`.
 - Match Planning Center JSON:API filters (`where[title]`, `where[search_name]`) and documented routes.
 - The Services API cannot send Accept/Decline scheduling emails. Use `team_reminders` and `notify-status`; return `attributes.planning_center_url`.
-- Use Conventional Commits on PR titles (`feat:`, `fix:`, `docs:`, `ci:`, …). Merges to `main` with `feat` or `fix` publish a semver npm release (`feat` → minor, `fix` → patch, `type!:` or `BREAKING CHANGE` → major). Do not bump `package.json` by hand.
+- Use Conventional Commits on PR titles (`feat:`, `fix:`, `docs:`, `ci:`, …). Merges to `main` with `feat` or `fix` publish a semver npm release (`feat` → minor, `fix` → patch, `type!:` or `BREAKING CHANGE` → major). Do not bump `package.json` by hand; the publish job commits the new version.
