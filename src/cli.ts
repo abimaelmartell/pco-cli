@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { PartialWorkflowError, PlanningCenterApiError, PlanningCenterClient } from './client.js';
 import type { ArrangementAttributes, KeyAttributes } from './client.js';
+import { formatCliError } from './cli-error.js';
 import { healthReport, loadConfigFromAuthOptions } from './config.js';
 import {
   asSingleResource,
@@ -947,11 +948,6 @@ program
   });
 
 program.parseAsync().catch((error: unknown) => {
-  if (error instanceof PlanningCenterApiError || error instanceof PartialWorkflowError) {
-    console.error(JSON.stringify(error.toJSON(), null, 2));
-  } else {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(JSON.stringify({ ok: false, error: message }, null, 2));
-  }
+  console.error(JSON.stringify(formatCliError(error), null, 2));
   process.exitCode = 1;
 });

@@ -71,7 +71,7 @@ Expect `"auth": "basic"` (client id + secret) or `"auth": "bearer"` (access toke
 3. Keys belong to an **arrangement**, not the song. After `songs create`, run `arrangements list <song-id>` (often a Default arrangement exists) before `keys list` / `keys create`.
 4. If the user gives **songs with keys** (and usually musicians), do **not** use `create-worship-plan` to add items. That composite POSTs `song_id` and `title` (PCO default arrangement/key). Follow **Worship plan with keys and musicians** below.
 5. Use `create-worship-plan` only when songs are titles with **no** required keys and you want fail-closed title resolution before the plan exists.
-6. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false`. Composite commands may include `"partial"` with whatever was created.
+6. Treat stdout JSON as the source of truth. On failure, stderr is JSON with `"ok": false` and `"version"`. Composite commands may include `"partial"` with whatever was created.
 7. `--starts-at` / `--ends-at` must be ISO 8601 **with a timezone** (example `2026-08-30T10:00:00Z`). `--ends-at` requires `--starts-at` and must be later.
 8. Song titles and people names must resolve to **exactly one** match. If search returns 0 or 2+, stop and ask; do not pick the first row.
 9. `--starting-key` must be a Planning Center value (`C`, `G`, `F#`, `Eb`, `Cm`, `Am`, …). Do not send `G major` or `key of G`.
